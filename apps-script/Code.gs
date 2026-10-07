@@ -14,21 +14,25 @@ const FOLDER_ID = 'ВСТАВЬТЕ_СЮДА_ID_ПАПКИ';
 
 const STATE_FILE_NAME = '_dashboard_state.json'; // служебный файл, не удаляйте и не переименовывайте
 const TZ_OFFSET_HOURS = 3;                         // Metabase отдаёт время в UTC, переводим в Москву
-const CACHE_SECONDS = 60;                          // как часто пересобирать ответ
-const TIME_BUDGET_MS = 20000;                      // сколько времени тратить на новые файлы за один запрос
+const REFRESH_MINUTES = 5;                         // как часто скрипт сам проверяет папку (после запуска setup)
+const CHUNK = 40000;                               // ответ хранится в кэше кусками (лимит Google — 100 КБ на кусок)
 
+/**
+ * Сайт получает готовый ответ из кэша — это быстро. Папку обрабатывает функция refresh,
+ * которая после запуска setup сама запускается раз в 5 минут.
+ * Если кэш пуст (например, setup ещё не запускали), ответ собирается прямо здесь.
+ */
 function doGet(e) {
   const fresh = e && e.parameter && e.parameter.fresh;
-  const cache = CacheService.getScriptCache();
   if (!fresh) {
-    const hit = cache.get('out');
+    const hit = cacheGet_();
     if (hit) return json_(hit);
   }
   const lock = LockService.getScriptLock();
-  if (!lock.tryLock(25000)) return json_(JSON.stringify({ error: 'Сервер занят обработкой файлов, обновите страницу через минуту.' }));
+  if (!lock.tryLock(25000)) return json_(JSON.stringify({ error: 'Скрипт занят обработкой файлов, обновите страницу через минуту.' }));
   try {
-    const out = JSON.stringify(build_());
-    try { cache.put('out', out, CACHE_SECONDS); } catch (_) { /* ответ больше лимита кэша — просто не кэшируем */ }
+    const out = JSON.stringify(publicView_(build_(20000)));
+    cachePut_(out, 60);
     return json_(out);
   } catch (err) {
     return json_(JSON.stringify({ error: String((err && err.message) || err) }));
@@ -37,17 +41,67 @@ function doGet(e) {
   }
 }
 
-/** Запустите вручную из редактора, чтобы выдать доступ и проверить, что всё читается. */
-function test() {
-  const r = build_();
-  Logger.log('Файлов обработано: ' + r.filesTotal + ', дней: ' + Object.keys(r.days).length + ', ошибки: ' + JSON.stringify(r.errors));
+/** Запустите ОДИН раз из редактора: включает автоматическую проверку папки раз в 5 минут. */
+function setup() {
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'refresh') ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('refresh').timeBased().everyMinutes(REFRESH_MINUTES).create();
+  refresh();
+  Logger.log('Готово: папка будет проверяться раз в ' + REFRESH_MINUTES + ' минут.');
 }
+
+/** Обрабатывает новые файлы в папке и кладёт готовый ответ в кэш. Запускается по расписанию. */
+function refresh() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) return;
+  try {
+    const r = build_(240000);
+    cachePut_(JSON.stringify(publicView_(r)), REFRESH_MINUTES * 60 * 3);
+    Logger.log('Файлов учтено: ' + r.filesTotal + ', дней: ' + Object.keys(r.days).length + ', ждут обработки: ' + r.pending + ', ошибки: ' + JSON.stringify(r.errors));
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Проверка из редактора: обработать папку и показать итог в журнале. */
+function test() { refresh(); }
 
 function json_(s) {
   return ContentService.createTextOutput(s).setMimeType(ContentService.MimeType.JSON);
 }
 
-function build_() {
+// ---------- Кэш ответа (кусками, чтобы не упираться в лимит размера) ----------
+function cachePut_(s, seconds) {
+  const cache = CacheService.getScriptCache();
+  const parts = {};
+  let n = 0;
+  for (let i = 0; i < s.length; i += CHUNK) parts['out_' + (n++)] = s.slice(i, i + CHUNK);
+  parts['out_n'] = String(n);
+  try { cache.putAll(parts, Math.min(seconds, 21600)); } catch (_) { /* не удалось закэшировать — просто соберём заново в следующий раз */ }
+}
+
+function cacheGet_() {
+  const cache = CacheService.getScriptCache();
+  const n = parseInt(cache.get('out_n'), 10);
+  if (!n) return null;
+  const keys = [];
+  for (let i = 0; i < n; i++) keys.push('out_' + i);
+  const got = cache.getAll(keys);
+  let s = '';
+  for (let i = 0; i < n; i++) { if (got['out_' + i] == null) return null; s += got['out_' + i]; }
+  return s;
+}
+
+/** Сайту не нужны школы — убираем их из ответа, чтобы он оставался лёгким. */
+function publicView_(r) {
+  const days = {};
+  Object.keys(r.days).forEach(function (k) {
+    const d = r.days[k];
+    days[k] = { date: d.date, total: d.total, students: d.students, teachers: d.teachers, firstAt: d.firstAt, lastAt: d.lastAt, partialStart: d.partialStart, regions: d.regions, slots: d.slots };
+  });
+  return { generatedAt: r.generatedAt, filesTotal: r.filesTotal, latestFile: r.latestFile, pending: r.pending, errors: r.errors, days: days };
+}
+
+function build_(budgetMs) {
   const started = Date.now();
   const folder = DriveApp.getFolderById(FOLDER_ID);
   const st = loadState_(folder);
@@ -65,7 +119,7 @@ function build_() {
     const id = f.getId(), upd = f.getLastUpdated().getTime();
     if (!latest || upd > latest.updated) latest = { name: name, updated: upd };
     if (state.processed[id] === upd) continue;
-    if (Date.now() - started > TIME_BUDGET_MS) { pending++; continue; }
+    if (Date.now() - started > budgetMs) { pending++; continue; }
     try {
       const rows = isSheet ? readGoogleSheet_(id) : /\.csv$/i.test(name) ? Utilities.parseCsv(f.getBlob().getDataAsString('UTF-8')) : readXlsx_(f.getBlob());
       const agg = aggregate_(rows);
@@ -82,7 +136,6 @@ function build_() {
   }
   return {
     generatedAt: new Date().toISOString(),
-    stateUpdatedAt: state.updatedAt || null,
     filesTotal: Object.keys(state.processed).length,
     latestFile: latest,
     pending: pending,
