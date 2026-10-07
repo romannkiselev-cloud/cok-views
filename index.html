@@ -405,12 +405,16 @@ function apply(j) {
 }
 // Сначала показываем то, что этот браузер видел в прошлый раз, а свежие цифры подтягиваем следом
 try { const c = localStorage.getItem(LS_KEY); if (c) apply(JSON.parse(c)); } catch (_) {}
-async function load(fresh) {
+async function load() {
   if (busy) return; busy = true;
-  if (!/^https:\/\/script\.google\.com\//.test(API_URL)) { status("Сайт ещё не подключён к папке: в файле index.html не указан адрес скрипта Google (API_URL).", "err"); $("coverage").textContent = "Нет подключения к данным"; busy = false; return; }
   try {
-    const res = await fetch(API_URL + (fresh ? "?fresh=1" : ""), { cache: "no-store" });
-    if (!res.ok) throw new Error("скрипт ответил с ошибкой " + res.status);
+    // Основной источник — data.json рядом с сайтом (его раз в 5 минут обновляет скрипт Google).
+    // Если файла ещё нет, спрашиваем скрипт напрямую.
+    let res = await fetch("data.json?t=" + Date.now(), { cache: "no-store" }).catch(() => null);
+    if (!res || !res.ok) {
+      res = await fetch(API_URL, { cache: "no-store" });
+      if (!res.ok) throw new Error("скрипт ответил с ошибкой " + res.status);
+    }
     const text = await res.text();
     const j = JSON.parse(text);
     if (j.error) throw new Error(j.error);
@@ -424,9 +428,9 @@ async function load(fresh) {
     if (!loaded) { status("Не удалось получить данные: " + esc((e && e.message) || e) + ". Проверьте интернет и обновите страницу.", "err"); $("coverage").textContent = "Нет данных"; }
   } finally { busy = false; }
 }
-setInterval(() => { if (document.visibilityState === "visible") load(false); }, 5 * 60 * 1000);
-document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && loaded) load(false); });
-load(false);
+setInterval(() => { if (document.visibilityState === "visible") load(); }, 5 * 60 * 1000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && loaded) load(); });
+load();
 })();
 </script>
 </body>

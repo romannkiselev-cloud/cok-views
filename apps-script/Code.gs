@@ -1,5 +1,6 @@
 /**
  * Дашборд «Просмотры уроков ЦОК» — сборщик данных из папки Google Диска.
+ * Раз в 5 минут обрабатывает новые выгрузки и кладёт готовые цифры в data.json в репозитории сайта.
  *
  * Что делает: читает все выгрузки из Metabase (xlsx, csv или Google-таблицы) в папке,
  * склеивает их по дням (для каждого дня берётся самая полная версия) и отдаёт
@@ -17,10 +18,15 @@ const TZ_OFFSET_HOURS = 3;                         // Metabase отдаёт вр
 const REFRESH_MINUTES = 5;                         // как часто скрипт сам проверяет папку (после запуска setup)
 const CHUNK = 40000;                               // ответ хранится в кэше кусками (лимит Google — 100 КБ на кусок)
 
+// Куда класть готовые цифры для сайта. Ключ доступа GitHub хранится не здесь, а в
+// «Настройки проекта» → «Свойства скрипта» под именем GITHUB_TOKEN (код лежит в открытом репозитории).
+const GITHUB_REPO = 'romannkiselev-cloud/cok-views';
+const GITHUB_BRANCH = 'main';
+const GITHUB_PATH = 'data.json';
+
 /**
- * Сайт получает готовый ответ из кэша — это быстро. Папку обрабатывает функция refresh,
- * которая после запуска setup сама запускается раз в 5 минут.
- * Если кэш пуст (например, setup ещё не запускали), ответ собирается прямо здесь.
+ * Запасной путь для сайта: обычно он берёт data.json из репозитория, а сюда обращается,
+ * только если data.json ещё нет. Ответ отдаётся из кэша; если кэш пуст, собирается прямо здесь.
  */
 function doGet(e) {
   const fresh = e && e.parameter && e.parameter.fresh;
@@ -55,7 +61,9 @@ function refresh() {
   if (!lock.tryLock(30000)) return;
   try {
     const r = build_(240000);
-    cachePut_(JSON.stringify(publicView_(r)), REFRESH_MINUTES * 60 * 3);
+    const pub = publicView_(r);
+    cachePut_(JSON.stringify(pub), REFRESH_MINUTES * 60 * 3);
+    pushToGithub_(pub);
     Logger.log('Файлов учтено: ' + r.filesTotal + ', дней: ' + Object.keys(r.days).length + ', ждут обработки: ' + r.pending + ', ошибки: ' + JSON.stringify(r.errors));
   } finally {
     lock.releaseLock();
@@ -64,6 +72,32 @@ function refresh() {
 
 /** Проверка из редактора: обработать папку и показать итог в журнале. */
 function test() { refresh(); }
+
+/**
+ * Кладёт цифры в data.json в репозитории сайта — только если они изменились,
+ * чтобы не плодить лишние обновления сайта.
+ */
+function pushToGithub_(pub) {
+  const props = PropertiesService.getScriptProperties();
+  const token = props.getProperty('GITHUB_TOKEN');
+  if (!token) { Logger.log('GITHUB_TOKEN не задан — данные на сайт не отправлены.'); return; }
+  const copy = JSON.parse(JSON.stringify(pub));
+  delete copy.generatedAt;
+  const hash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, JSON.stringify(copy), Utilities.Charset.UTF_8));
+  if (props.getProperty('LAST_PUSH_HASH') === hash) { Logger.log('Данные не изменились — на сайт не отправляем.'); return; }
+  const url = 'https://api.github.com/repos/' + GITHUB_REPO + '/contents/' + GITHUB_PATH;
+  const headers = { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+  const cur = UrlFetchApp.fetch(url + '?ref=' + GITHUB_BRANCH, { headers: headers, muteHttpExceptions: true });
+  let sha = null;
+  if (cur.getResponseCode() === 200) sha = JSON.parse(cur.getContentText()).sha;
+  else if (cur.getResponseCode() !== 404) throw new Error('GitHub не отдал текущий data.json: ' + cur.getResponseCode() + ' ' + cur.getContentText().slice(0, 200));
+  const body = { message: 'Обновлены данные дашборда', branch: GITHUB_BRANCH, content: Utilities.base64Encode(JSON.stringify(pub), Utilities.Charset.UTF_8) };
+  if (sha) body.sha = sha;
+  const res = UrlFetchApp.fetch(url, { method: 'put', headers: headers, contentType: 'application/json', payload: JSON.stringify(body), muteHttpExceptions: true });
+  if (res.getResponseCode() !== 200 && res.getResponseCode() !== 201) throw new Error('GitHub не принял data.json: ' + res.getResponseCode() + ' ' + res.getContentText().slice(0, 200));
+  props.setProperty('LAST_PUSH_HASH', hash);
+  Logger.log('Данные отправлены на сайт.');
+}
 
 function json_(s) {
   return ContentService.createTextOutput(s).setMimeType(ContentService.MimeType.JSON);
