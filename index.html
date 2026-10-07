@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Unbounded:wght@500;600&display=swap">
 <style>
-/* Layout: header with refresh action → two KPI tiles → week (chart + day table) → two top-5 region lists → all regions → method notes */
+/* Layout: header with last-update stamp → three KPI tiles → week (chart + day table) → two top-5 region lists → all regions */
 :root {
   --bg: #F3F5F8;
   --surface: #FFFFFF;
@@ -56,6 +56,7 @@ h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(22px, 
 .btn:focus-visible, .seg button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .btn[disabled] { opacity: .55; cursor: progress; }
 .hint { font-size: 12px; color: var(--faint); }
+.updated { font-size: 13px; color: var(--muted); white-space: nowrap; }
 
 .notice { border-radius: var(--r); padding: 12px 14px; font-size: 14px; background: var(--warn-bg); color: var(--warn-ink); }
 .notice.ok { background: var(--accent-wash); color: var(--ink); }
@@ -125,8 +126,7 @@ details.panel[open] summary { margin-bottom: 12px; }
       <p class="sub" id="coverage">Загружаю данные…</p>
     </div>
     <div class="actions">
-      <button class="btn" id="refreshBtn" type="button">Обновить</button>
-      <span class="hint" id="fetchedAt"></span>
+      <span class="updated" id="updatedAt"></span>
     </div>
   </header>
 
@@ -134,7 +134,7 @@ details.panel[open] summary { margin-bottom: 12px; }
 
   <div id="emptyState" class="panel empty" hidden>
     <strong>Данных пока нет</strong>
-    Положите выгрузку из Metabase (xlsx) в папку на Google Диске и нажмите «Обновить».
+    Положите выгрузку из Metabase (xlsx) в папку на Google Диске — через несколько минут цифры появятся здесь.
   </div>
 
   <div id="dash" hidden>
@@ -396,8 +396,8 @@ function status(msg, kind) { const s = $("status"); s.className = "notice " + (k
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 let busy = false;
 async function load(fresh) {
-  if (busy) return; busy = true; $("refreshBtn").disabled = true;
-  if (!/^https:\/\/script\.google\.com\//.test(API_URL)) { status("Сайт ещё не подключён к папке: в файле index.html не указан адрес скрипта Google (API_URL).", "err"); $("coverage").textContent = "Нет подключения к данным"; busy = false; $("refreshBtn").disabled = false; return; }
+  if (busy) return; busy = true;
+  if (!/^https:\/\/script\.google\.com\//.test(API_URL)) { status("Сайт ещё не подключён к папке: в файле index.html не указан адрес скрипта Google (API_URL).", "err"); $("coverage").textContent = "Нет подключения к данным"; busy = false; return; }
   try {
     const res = await fetch(API_URL + (fresh ? "?fresh=1" : ""), { cache: "no-store" });
     if (!res.ok) throw new Error("скрипт ответил с ошибкой " + res.status);
@@ -405,17 +405,16 @@ async function load(fresh) {
     if (j.error) throw new Error(j.error);
     days = j.days || {}; meta = j; loaded = true;
     const notes = [];
-    if (j.pending) notes.push("Ещё " + j.pending + " " + plural(j.pending, "новый файл ждёт", "новых файла ждут", "новых файлов ждут") + " обработки. Нажмите «Обновить» через минуту.");
+    if (j.pending) notes.push("Ещё " + j.pending + " " + plural(j.pending, "новый файл ждёт", "новых файла ждут", "новых файлов ждут") + " обработки, обновите страницу через минуту.");
     if (j.errors && j.errors.length) notes.push("Не удалось прочитать: " + j.errors.map(e => "«" + esc(e.file) + "» (" + esc(e.message) + ")").join("; ") + ".");
     status(notes.join(" "), notes.length ? "" : "");
-    $("fetchedAt").textContent = "Обновлено в " + new Date().toLocaleTimeString("ru-RU", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit" }) + " мск";
+    $("updatedAt").textContent = j.latestFile ? "Статистика обновлена " + new Date(j.latestFile.updated).toLocaleString("ru-RU", { timeZone: "Europe/Moscow", day: "numeric", month: "long" }) + " в " + new Date(j.latestFile.updated).toLocaleTimeString("ru-RU", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit" }) + " мск" : "";
     render();
   } catch (e) {
-    status("Не удалось получить данные: " + esc((e && e.message) || e) + ". Проверьте интернет и нажмите «Обновить».", "err");
+    status("Не удалось получить данные: " + esc((e && e.message) || e) + ". Проверьте интернет и обновите страницу.", "err");
     if (!loaded) $("coverage").textContent = "Нет данных";
-  } finally { busy = false; $("refreshBtn").disabled = false; }
+  } finally { busy = false; }
 }
-$("refreshBtn").onclick = () => load(true);
 setInterval(() => { if (document.visibilityState === "visible") load(false); }, 5 * 60 * 1000);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && loaded) load(false); });
 load(false);
