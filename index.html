@@ -196,13 +196,6 @@ details.panel[open] summary { margin-bottom: 12px; }
       <div class="scroll"><table id="allRegions"><thead><tr><th>Регион</th><th class="r">Всего</th><th class="r">За неделю</th></tr></thead><tbody></tbody></table></div>
     </details>
 
-    <section class="notes">
-      <p>Один просмотр — одна строка выгрузки (открытие урока). Строки без региона — это учителя: за их просмотры не платят, поэтому все цифры, кроме плашки «Просмотры учителей», считаются только по ученикам. Время переведено в московское, сутки считаются по Москве.</p>
-      <p>Данные берутся из выгрузок Metabase в папке на Google Диске. Выгрузки накапливаются: по каждому дню сохраняется самая полная версия из всех файлов в папке, поэтому неделя собирается, даже если Metabase отдаёт только последние сутки. Страница сама обновляется раз в 5 минут.</p>
-      <p>Прирост за день сравнивается с предыдущим днём на то же время суток, чтобы неполный текущий день не выглядел провалом.</p>
-      <p>Названия регионов — по кодам субъектов РФ (как в автомобильных номерах, включая дополнительные коды, например 95 — Чечня, 80 — ДНР).</p>
-      <p id="lastUpload"></p>
-    </section>
   </div>
 </div>
 
@@ -341,7 +334,6 @@ function render() {
   const wMap = new Map(W.list);
   $("allRegions").querySelector("tbody").innerHTML = A.list.map(([n, v]) => "<tr><td>" + n + "</td><td class='r'>" + fmt(v) + "</td><td class='r'>" + fmt(wMap.get(n) || 0) + "</td></tr>").join("");
 
-  $("lastUpload").textContent = meta && meta.latestFile ? "Файлов в папке учтено: " + fmt(meta.filesTotal) + ". Последний добавлен " + new Date(meta.latestFile.updated).toLocaleString("ru-RU", { timeZone: "Europe/Moscow", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) + " мск: «" + meta.latestFile.name + "»." : "";
 }
 
 function renderRank(id, A) {
