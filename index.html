@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Просмотры уроков ЦОК</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Unbounded:wght@500;600&display=swap">
+<style>
+/* Layout: header with refresh action → two KPI tiles → week (chart + day table) → two top-5 region lists → all regions → method notes */
+:root {
+  --bg: #F3F5F8;
+  --surface: #FFFFFF;
+  --ink: #141C28;
+  --muted: #5A6577;
+  --faint: #8A94A4;
+  --line: #DCE1E8;
+  --accent: #2C57C9;
+  --accent-soft: #BCCBF0;
+  --accent-wash: #E8EEFB;
+  --good: #17784A;
+  --bad: #B83A26;
+  --warn-bg: #FFF5E0;
+  --warn-ink: #7A5200;
+  --font-display: "Unbounded", "Golos Text", system-ui, sans-serif;
+  --font-body: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E131A; --surface: #161D27; --ink: #E6EBF2; --muted: #9AA5B6; --faint: #6F7A8C;
+    --line: #273142; --accent: #7F9EF3; --accent-soft: #34477A; --accent-wash: #1C2740;
+    --good: #4CC38A; --bad: #F07A63; --warn-bg: #2F2610; --warn-ink: #F2C46B; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E131A; --surface: #161D27; --ink: #E6EBF2; --muted: #9AA5B6; --faint: #6F7A8C;
+  --line: #273142; --accent: #7F9EF3; --accent-soft: #34477A; --accent-wash: #1C2740;
+  --good: #4CC38A; --bad: #F07A63; --warn-bg: #2F2610; --warn-ink: #F2C46B; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 48px; display: grid; gap: 20px; }
+.num { font-variant-numeric: tabular-nums; }
+
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; }
+header .t { min-width: 0; }
+h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(22px, 3.2vw, 30px); margin: 0 0 6px; letter-spacing: -0.01em; text-wrap: balance; }
+.sub { color: var(--muted); margin: 0; font-size: 14px; }
+.actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.btn { font: inherit; font-weight: 600; font-size: 14px; border: 0; border-radius: 8px; padding: 10px 16px; background: var(--accent); color: var(--surface); cursor: pointer; }
+.btn:hover { filter: brightness(1.08); }
+.btn:focus-visible, .seg button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn[disabled] { opacity: .55; cursor: progress; }
+.hint { font-size: 12px; color: var(--faint); }
+
+.notice { border-radius: var(--r); padding: 12px 14px; font-size: 14px; background: var(--warn-bg); color: var(--warn-ink); }
+.notice.ok { background: var(--accent-wash); color: var(--ink); }
+.notice.err { background: var(--warn-bg); color: var(--bad); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px 20px; min-width: 0; }
+.panel h2 { font-size: 15px; font-weight: 600; margin: 0 0 2px; }
+.panel .cap { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 960px) { .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid3 > :last-child { grid-column: 1 / -1; } }
+.kpi.teach .value { color: var(--muted); }
+.grid-week { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 20px; }
+@media (max-width: 760px) { .grid2, .grid3, .grid-week { grid-template-columns: minmax(0, 1fr); } .actions { align-items: flex-start; } }
+
+.kpi .label { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; font-weight: 500; }
+.kpi .value { font-family: var(--font-display); font-weight: 500; font-size: clamp(34px, 5vw, 48px); line-height: 1.1; margin: 8px 0 8px; font-variant-numeric: tabular-nums; }
+.kpi .meta { font-size: 14px; color: var(--muted); display: grid; gap: 4px; }
+.delta { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 3px 9px; border-radius: 999px; font-size: 14px; background: var(--accent-wash); }
+.delta.up { color: var(--good); } .delta.down { color: var(--bad); } .delta.flat { color: var(--muted); }
+
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; padding: 2px; gap: 2px; }
+.seg button { font: inherit; font-size: 13px; border: 0; background: transparent; color: var(--muted); padding: 5px 10px; border-radius: 6px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent-wash); color: var(--ink); font-weight: 600; }
+.chart-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.chart { position: relative; margin-top: 8px; }
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart text { fill: var(--muted); font-family: var(--font-body); font-size: 12px; }
+.chart .grid line { stroke: var(--line); }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 13px; padding: 7px 10px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, -100%); }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th { text-align: left; font-weight: 500; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; padding: 0 8px 8px 0; border-bottom: 1px solid var(--line); }
+td { padding: 8px 8px 8px 0; border-bottom: 1px solid var(--line); }
+tr:last-child td { border-bottom: 0; }
+td.r, th.r { white-space: nowrap; text-align: right; padding-right: 0; padding-left: 8px; font-variant-numeric: tabular-nums; }
+td .tag { font-size: 11px; color: var(--warn-ink); background: var(--warn-bg); border-radius: 4px; padding: 1px 6px; margin-left: 6px; white-space: nowrap; }
+td.na { color: var(--faint); }
+
+.rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.rank li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 4px 10px; align-items: baseline; }
+.rank .pos { color: var(--faint); font-variant-numeric: tabular-nums; font-size: 13px; }
+.rank .name { min-width: 0; overflow-wrap: anywhere; }
+.rank .v { font-weight: 600; font-variant-numeric: tabular-nums; }
+.rank .v small { font-weight: 400; color: var(--muted); margin-left: 6px; font-size: 12px; }
+.rank .bar { grid-column: 2 / 4; height: 6px; background: var(--accent-wash); border-radius: 3px; overflow: hidden; }
+.rank .bar span { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.foot { font-size: 12px; color: var(--muted); margin: 14px 0 0; }
+
+details.panel summary { cursor: pointer; font-weight: 600; font-size: 15px; }
+details.panel[open] summary { margin-bottom: 12px; }
+.scroll { overflow-x: auto; }
+.notes { font-size: 13px; color: var(--muted); display: grid; gap: 6px; max-width: 80ch; }
+.notes p { margin: 0; }
+.empty { text-align: center; padding: 40px 20px; color: var(--muted); }
+.empty strong { display: block; color: var(--ink); font-size: 17px; margin-bottom: 6px; }
+@media (prefers-reduced-motion: no-preference) { .rank .bar span { transition: width .4s ease; } }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <header>
+    <div class="t">
+      <h1>Просмотры уроков ЦОК</h1>
+      <p class="sub" id="coverage">Загружаю данные…</p>
+    </div>
+    <div class="actions">
+      <button class="btn" id="refreshBtn" type="button">Обновить</button>
+      <span class="hint" id="fetchedAt"></span>
+    </div>
+  </header>
+
+  <div id="status" aria-live="polite" hidden></div>
+
+  <div id="emptyState" class="panel empty" hidden>
+    <strong>Данных пока нет</strong>
+    Положите выгрузку из Metabase (xlsx) в папку на Google Диске и нажмите «Обновить».
+  </div>
+
+  <div id="dash" hidden>
+    <div class="grid3" style="margin-bottom:20px">
+      <section class="panel kpi">
+        <div class="label">Всего просмотров учеников</div>
+        <div class="value" id="kTotal">—</div>
+        <div class="meta" id="kTotalMeta"></div>
+      </section>
+      <section class="panel kpi">
+        <div class="label" id="kDayLabel">Прирост за день</div>
+        <div class="value" id="kDay">—</div>
+        <div class="meta" id="kDayMeta"></div>
+      </section>
+      <section class="panel kpi teach">
+        <div class="label">Просмотры учителей</div>
+        <div class="value" id="kTeach">—</div>
+        <div class="meta" id="kTeachMeta"></div>
+      </section>
+    </div>
+
+    <div class="grid-week" style="margin-bottom:20px">
+      <section class="panel">
+        <div class="chart-head">
+          <div>
+            <h2 id="chartTitle">Просмотры учеников за неделю</h2>
+            <p class="cap" id="chartCap"></p>
+          </div>
+          <div class="seg" role="group" aria-label="Режим графика">
+            <button type="button" id="modeDaily" aria-pressed="true">За день</button>
+            <button type="button" id="modeCum" aria-pressed="false">Накопительно</button>
+          </div>
+        </div>
+        <div class="chart" id="chart"></div>
+        <div class="legend"><span><i style="background:var(--accent)"></i>полный день</span><span><i style="background:var(--accent-soft)"></i>неполный день (данные не за все сутки)</span></div>
+      </section>
+      <section class="panel">
+        <h2>По дням</h2>
+        <p class="cap">Просмотры учеников за день и нарастающим итогом на конец дня; учителя отдельно</p>
+        <table id="dayTable"><thead><tr><th>Дата</th><th class="r">Ученики</th><th class="r">Нараст.</th><th class="r">Учителя</th></tr></thead><tbody></tbody></table>
+      </section>
+    </div>
+
+    <div class="grid2" style="margin-bottom:20px">
+      <section class="panel">
+        <h2>Топ-5 регионов по числу просмотров</h2>
+        <p class="cap" id="topAllCap">За всё время в данных</p>
+        <ol class="rank" id="topAll"></ol>
+      </section>
+      <section class="panel">
+        <h2>Топ-5 регионов по приросту за неделю</h2>
+        <p class="cap" id="topWeekCap"></p>
+        <ol class="rank" id="topWeek"></ol>
+      </section>
+    </div>
+
+    <details class="panel" style="margin-bottom:20px">
+      <summary>Все регионы</summary>
+      <div class="scroll"><table id="allRegions"><thead><tr><th>Регион</th><th class="r">Всего</th><th class="r">За неделю</th></tr></thead><tbody></tbody></table></div>
+    </details>
+
+    <section class="notes">
+      <p>Один просмотр — одна строка выгрузки (открытие урока). Строки без региона — это учителя: за их просмотры не платят, поэтому все цифры, кроме плашки «Просмотры учителей», считаются только по ученикам. Время переведено в московское, сутки считаются по Москве.</p>
+      <p>Данные берутся из выгрузок Metabase в папке на Google Диске. Выгрузки накапливаются: по каждому дню сохраняется самая полная версия из всех файлов в папке, поэтому неделя собирается, даже если Metabase отдаёт только последние сутки. Страница сама обновляется раз в 5 минут.</p>
+      <p>Прирост за день сравнивается с предыдущим днём на то же время суток, чтобы неполный текущий день не выглядел провалом.</p>
+      <p>Названия регионов — по кодам субъектов РФ (как в автомобильных номерах, включая дополнительные коды, например 95 — Чечня, 80 — ДНР).</p>
+      <p id="lastUpload"></p>
+    </section>
+  </div>
+</div>
+
+</body>
+</html>
+<script>
+(() => {
+const REGIONS = {
+  1:"Республика Адыгея",2:"Республика Башкортостан",3:"Республика Бурятия",4:"Республика Алтай",5:"Республика Дагестан",
+  6:"Республика Ингушетия",7:"Кабардино-Балкарская Республика",8:"Республика Калмыкия",9:"Карачаево-Черкесская Республика",
+  10:"Республика Карелия",11:"Республика Коми",12:"Республика Марий Эл",13:"Республика Мордовия",14:"Республика Саха (Якутия)",
+  15:"Республика Северная Осетия — Алания",16:"Республика Татарстан",17:"Республика Тыва",18:"Удмуртская Республика",
+  19:"Республика Хакасия",20:"Чеченская Республика",21:"Чувашская Республика",22:"Алтайский край",23:"Краснодарский край",
+  24:"Красноярский край",25:"Приморский край",26:"Ставропольский край",27:"Хабаровский край",28:"Амурская область",
+  29:"Архангельская область",30:"Астраханская область",31:"Белгородская область",32:"Брянская область",33:"Владимирская область",
+  34:"Волгоградская область",35:"Вологодская область",36:"Воронежская область",37:"Ивановская область",38:"Иркутская область",
+  39:"Калининградская область",40:"Калужская область",41:"Камчатский край",42:"Кемеровская область — Кузбасс",43:"Кировская область",
+  44:"Костромская область",45:"Курганская область",46:"Курская область",47:"Ленинградская область",48:"Липецкая область",
+  49:"Магаданская область",50:"Московская область",51:"Мурманская область",52:"Нижегородская область",53:"Новгородская область",
+  54:"Новосибирская область",55:"Омская область",56:"Оренбургская область",57:"Орловская область",58:"Пензенская область",
+  59:"Пермский край",60:"Псковская область",61:"Ростовская область",62:"Рязанская область",63:"Самарская область",
+  64:"Саратовская область",65:"Сахалинская область",66:"Свердловская область",67:"Смоленская область",68:"Тамбовская область",
+  69:"Тверская область",70:"Томская область",71:"Тульская область",72:"Тюменская область",73:"Ульяновская область",
+  74:"Челябинская область",75:"Забайкальский край",76:"Ярославская область",77:"Москва",78:"Санкт-Петербург",
+  79:"Еврейская автономная область",80:"Донецкая Народная Республика",81:"Луганская Народная Республика",82:"Республика Крым",
+  83:"Ненецкий автономный округ",84:"Херсонская область",85:"Запорожская область",86:"Ханты-Мансийский АО — Югра",
+  87:"Чукотский автономный округ",89:"Ямало-Ненецкий автономный округ",90:"Московская область",92:"Севастополь",
+  93:"Краснодарский край",94:"Байконур",95:"Чеченская Республика",96:"Свердловская область",97:"Москва",98:"Санкт-Петербург",99:"Москва"
+};
+const regionName = c => c === "0" ? null : (REGIONS[+c] || ("Регион с кодом " + c));
+const MONTHS = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+const MON_S = ["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
+const WD = ["вс","пн","вт","ср","чт","пт","сб"];
+const fmt = n => n == null ? "—" : n.toLocaleString("ru-RU");
+const pDate = s => { const [y,m,d] = s.split("-").map(Number); return new Date(Date.UTC(y, m-1, d)); };
+const key = dt => dt.toISOString().slice(0,10);
+const addDays = (s, n) => { const d = pDate(s); d.setUTCDate(d.getUTCDate()+n); return key(d); };
+const longDate = s => { const d = pDate(s); return d.getUTCDate() + " " + MONTHS[d.getUTCMonth()]; };
+const shortDate = s => { const d = pDate(s); return d.getUTCDate() + " " + MON_S[d.getUTCMonth()]; };
+const wd = s => WD[pDate(s).getUTCDay()];
+const $ = id => document.getElementById(id);
+const plural = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c); };
+
+let days = {};      // date -> doc
+let meta = null;
+let mode = "daily";
+let loaded = false;
+const API_URL = "https://script.google.com/macros/s/AKfycbxo5ZSX9LMqDuFtD__1MHJxMdQLc_lHAzmA7fWr_DVR9y9DU2Xrvmk3FIMc1W_Fm0ZGzQ/exec";
+
+function isPartial(d, latest) {
+  if (!d) return false;
+  if (d.partialStart) return true;
+  if (d.date === latest && d.lastAt < "23:45") return true;
+  return false;
+}
+
+function render() {
+  if (!loaded) return;
+  const keys = Object.keys(days).sort();
+  if (!keys.length) { $("dash").hidden = true; $("emptyState").hidden = false; $("coverage").textContent = "Данных пока нет"; return; }
+  $("emptyState").hidden = true; $("dash").hidden = false;
+  const first = keys[0], latest = keys[keys.length-1];
+  const L = days[latest], F = days[first];
+  $("coverage").textContent = "Данные с " + longDate(first) + " " + F.firstAt + " по " + longDate(latest) + " " + L.lastAt + " (мск)";
+
+  // KPI: total
+  const total = keys.reduce((s,k) => s + days[k].students, 0);
+  $("kTotal").textContent = fmt(total);
+  const tm = [];
+  tm.push("на " + longDate(latest) + ", " + L.lastAt);
+  if (F.partialStart) tm.push("Учтены просмотры с " + longDate(first) + " " + F.firstAt + ": более ранних в загруженных выгрузках нет");
+  $("kTotalMeta").innerHTML = tm.map(t => "<span>" + t + "</span>").join("");
+
+  // KPI: teachers
+  const tAll = keys.reduce((s,k) => s + (days[k].teachers || 0), 0), allViews = tAll + total;
+  const pct1 = (a, b) => b ? (Math.round(a / b * 1000) / 10).toLocaleString("ru-RU") + "%" : "—";
+  $("kTeach").textContent = fmt(tAll);
+  $("kTeachMeta").innerHTML = "<span><span class='delta flat'>" + pct1(tAll, allViews) + " всех просмотров</span></span>" +
+    "<span>за " + longDate(latest) + ": " + fmt(L.teachers || 0) + " (" + pct1(L.teachers || 0, (L.teachers || 0) + L.students) + ")</span>" +
+    "<span>За них не платят, в остальные цифры они не входят</span>";
+
+  // KPI: last day growth vs previous day at same time
+  $("kDayLabel").textContent = "Прирост за " + longDate(latest);
+  $("kDay").textContent = "+" + fmt(L.students);
+  const prevKey = addDays(latest, -1), P = days[prevKey];
+  const [hh, mm] = L.lastAt.split(":").map(Number);
+  const slot = Math.floor((hh*60+mm)/15);
+  const dm = [];
+  dm.push("<span>по состоянию на " + L.lastAt + (L.partialStart ? " · данные за день с " + L.firstAt : "") + "</span>");
+  if (!P) {
+    dm.push("<span>За " + longDate(prevKey) + " данных нет, сравнить не с чем</span>");
+  } else if (P.partialStart) {
+    dm.push("<span>За " + longDate(prevKey) + " данные неполные (с " + P.firstAt + "), сравнение было бы некорректным. Всего за " + longDate(prevKey) + ": " + fmt(P.students) + "</span>");
+  } else {
+    const same = P.slots.slice(0, slot+1).reduce((a,b)=>a+b,0);
+    const diff = L.students - same;
+    const pct = same ? Math.round(diff/same*100) : null;
+    const cls = diff > 0 ? "up" : diff < 0 ? "down" : "flat";
+    const arrow = diff > 0 ? "▲" : diff < 0 ? "▼" : "■";
+    const fullDay = L.lastAt >= "23:45";
+    dm.push("<span><span class='delta " + cls + "'>" + arrow + " " + (diff>0?"+":"") + fmt(diff) + (pct!=null ? " (" + (pct>0?"+":"") + pct + "%)" : "") + "</span></span>");
+    dm.push("<span>" + (fullDay ? "к полному дню " + longDate(prevKey) + ": " : "к " + longDate(prevKey) + " на то же время: ") + fmt(same) + (fullDay ? "" : " · за весь " + longDate(prevKey) + ": " + fmt(P.students)) + "</span>");
+  }
+  $("kDayMeta").innerHTML = dm.join("");
+
+  // Week
+  const week = [];
+  let running = keys.filter(k => k < addDays(latest, -6)).reduce((s,k)=>s+days[k].students,0);
+  for (let i = 6; i >= 0; i--) {
+    const k = addDays(latest, -i), d = days[k];
+    const before = k < first;
+    const v = d ? d.students : (before ? null : 0);
+    const tv = d ? d.teachers : (before ? null : 0);
+    if (v != null) running += v;
+    week.push({ k, v, tv, cum: before ? null : running, partial: isPartial(d, latest) });
+  }
+  const wFrom = week[0].k, wTo = latest;
+  const withData = week.filter(w => w.v != null).length;
+  $("chartTitle").textContent = "Просмотры учеников за неделю";
+  $("chartCap").textContent = shortDate(wFrom) + " — " + shortDate(wTo) + (withData < 7 ? " · данные есть за " + withData + " " + plural(withData,"день","дня","дней") + " из 7" : "");
+  drawChart(week);
+  $("dayTable").querySelector("tbody").innerHTML = week.slice().reverse().map(w =>
+    "<tr><td><span style='white-space:nowrap'>" + shortDate(w.k) + ", " + wd(w.k) + "</span>" + (w.partial && w.v != null ? "<span class='tag'>неполный</span>" : "") + "</td>" +
+    (w.v == null ? "<td class='r na'>нет</td><td class='r na'>—</td><td class='r na'>—</td>" : "<td class='r'>" + fmt(w.v) + "</td><td class='r'>" + fmt(w.cum) + "</td><td class='r na'>" + fmt(w.tv) + "</td>") + "</tr>").join("");
+
+  // Regions
+  const agg = (ks) => { const m = new Map(); let none = 0, all = 0;
+    ks.forEach(k => { for (const [c, n] of Object.entries(days[k].regions || {})) { all += n; const nm = regionName(c); if (!nm) { none += n; continue; } m.set(nm, (m.get(nm)||0) + n); } });
+    return { list: [...m.entries()].sort((a,b) => b[1]-a[1] || a[0].localeCompare(b[0], "ru")), none, all }; };
+  const weekKeys = keys.filter(k => k >= wFrom && k <= wTo);
+  const A = agg(keys), W = agg(weekKeys);
+  renderRank("topAll", A);
+  renderRank("topWeek", W);
+  $("topAllCap").textContent = "С " + longDate(first) + " по " + longDate(latest);
+  $("topWeekCap").textContent = "Просмотры за " + shortDate(wFrom) + " — " + shortDate(wTo) + (withData < 7 ? " (данные есть за " + withData + " " + plural(withData,"день","дня","дней") + ")" : "");
+  const wMap = new Map(W.list);
+  $("allRegions").querySelector("tbody").innerHTML = A.list.map(([n, v]) => "<tr><td>" + n + "</td><td class='r'>" + fmt(v) + "</td><td class='r'>" + fmt(wMap.get(n) || 0) + "</td></tr>").join("");
+
+  $("lastUpload").textContent = meta && meta.latestFile ? "Файлов в папке учтено: " + fmt(meta.filesTotal) + ". Последний добавлен " + new Date(meta.latestFile.updated).toLocaleString("ru-RU", { timeZone: "Europe/Moscow", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) + " мск: «" + meta.latestFile.name + "»." : "";
+}
+
+function renderRank(id, A) {
+  const top = A.list.slice(0, 5), max = top.length ? top[0][1] : 1;
+  $(id).innerHTML = top.length ? top.map(([n, v], i) =>
+    "<li><span class='pos'>" + (i+1) + "</span><span class='name'>" + n + "</span><span class='v'>" + fmt(v) + "<small>" + (A.all ? Math.round(v/A.all*1000)/10 : 0).toLocaleString("ru-RU") + "%</small></span>" +
+    "<span class='bar'><span style='width:" + (v/max*100).toFixed(1) + "%'></span></span></li>").join("")
+    : "<li class='na'>Нет данных за период</li>";
+}
+
+function niceScale(v) { if (v <= 0) return { max: 4, step: 1 }; const raw = v / 4, p = Math.pow(10, Math.floor(Math.log10(raw)));
+  let step = 10 * p; for (const m of [1, 2, 5, 10]) if (m * p >= raw) { step = m * p; break; }
+  step = Math.max(1, step); return { max: Math.ceil(v / step) * step, step }; }
+
+function drawChart(week) {
+  const el = $("chart");
+  const W = Math.max(300, Math.round(el.clientWidth || 640)), H = 250, m = { t: 14, r: 8, b: 40, l: 44 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const val = w => mode === "daily" ? w.v : w.cum;
+  const sc0 = niceScale(Math.max(0, ...week.map(w => val(w) || 0))), maxV = sc0.max;
+  const y = v => m.t + ih - (v / maxV) * ih;
+  const step = iw / week.length, bw = Math.min(56, step * 0.62);
+  let s = "<svg viewBox='0 0 " + W + " " + H + "' role='img' aria-label='Просмотры по дням за неделю'><g class='grid'>";
+  for (let v = 0; v <= maxV + 1e-9; v += sc0.step) { const yy = y(v);
+    s += "<line x1='" + m.l + "' x2='" + (W - m.r) + "' y1='" + yy + "' y2='" + yy + "'/><text x='" + (m.l - 8) + "' y='" + (yy + 4) + "' text-anchor='end'>" + fmt(Math.round(v)) + "</text>"; }
+  s += "</g>";
+  week.forEach((w, i) => {
+    const cx = m.l + step * i + step / 2, v = val(w);
+    if (v != null && v > 0) {
+      const top = y(v), h = m.t + ih - top, r = Math.min(4, h);
+      const x0 = cx - bw/2, x1 = cx + bw/2, base = m.t + ih;
+      s += "<path d='M" + x0 + "," + base + " V" + (top + r) + " Q" + x0 + "," + top + " " + (x0 + r) + "," + top + " H" + (x1 - r) + " Q" + x1 + "," + top + " " + x1 + "," + (top + r) + " V" + base + " Z' fill='" + (w.partial ? "var(--accent-soft)" : "var(--accent)") + "'/>";
+    } else if (v == null) {
+      s += "<text x='" + cx + "' y='" + (m.t + ih - 6) + "' text-anchor='middle' style='fill:var(--faint);font-size:11px'>нет</text>";
+    }
+    s += "<text x='" + cx + "' y='" + (H - 20) + "' text-anchor='middle' style='fill:var(--ink)'>" + shortDate(w.k) + "</text>";
+    s += "<text x='" + cx + "' y='" + (H - 5) + "' text-anchor='middle'>" + wd(w.k) + "</text>";
+    s += "<rect class='hit' data-i='" + i + "' x='" + (cx - step/2) + "' y='" + m.t + "' width='" + step + "' height='" + ih + "' fill='transparent'/>";
+  });
+  s += "<line x1='" + m.l + "' x2='" + (W - m.r) + "' y1='" + (m.t + ih) + "' y2='" + (m.t + ih) + "' style='stroke:var(--faint)'/></svg><div class='tip' hidden></div>";
+  el.innerHTML = s;
+  const tip = el.querySelector(".tip"), svg = el.querySelector("svg");
+  el.querySelectorAll(".hit").forEach(r => {
+    const show = () => { const w = week[+r.dataset.i], v = val(w);
+      tip.innerHTML = "<b>" + longDate(w.k) + ", " + wd(w.k) + "</b><br>" + (v == null ? "нет данных" : (mode === "daily" ? "за день: " : "всего: ") + fmt(v)) + (w.partial && v != null ? " · неполный день" : "");
+      const bb = svg.getBoundingClientRect(), sc = bb.width / W, cx = (+r.getAttribute("x") + step/2) * sc;
+      const top = v ? y(v) * sc : (m.t + ih) * sc;
+      tip.style.left = Math.max(70, Math.min(bb.width - 70, cx)) + "px"; tip.style.top = (top - 8) + "px"; tip.hidden = false; };
+    r.addEventListener("mouseenter", show); r.addEventListener("click", show);
+    r.addEventListener("mouseleave", () => { tip.hidden = true; });
+  });
+}
+
+let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(render, 150); });
+$("modeDaily").onclick = () => { mode = "daily"; $("modeDaily").setAttribute("aria-pressed","true"); $("modeCum").setAttribute("aria-pressed","false"); render(); };
+$("modeCum").onclick = () => { mode = "cum"; $("modeCum").setAttribute("aria-pressed","true"); $("modeDaily").setAttribute("aria-pressed","false"); render(); };
+
+// ---------- Data loading ----------
+function status(msg, kind) { const s = $("status"); s.className = "notice " + (kind || ""); s.innerHTML = msg; s.hidden = !msg; }
+const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+let busy = false;
+async function load(fresh) {
+  if (busy) return; busy = true; $("refreshBtn").disabled = true;
+  if (!/^https:\/\/script\.google\.com\//.test(API_URL)) { status("Сайт ещё не подключён к папке: в файле index.html не указан адрес скрипта Google (API_URL).", "err"); $("coverage").textContent = "Нет подключения к данным"; busy = false; $("refreshBtn").disabled = false; return; }
+  try {
+    const res = await fetch(API_URL + (fresh ? "?fresh=1" : ""), { cache: "no-store" });
+    if (!res.ok) throw new Error("скрипт ответил с ошибкой " + res.status);
+    const j = await res.json();
+    if (j.error) throw new Error(j.error);
+    days = j.days || {}; meta = j; loaded = true;
+    const notes = [];
+    if (j.pending) notes.push("Ещё " + j.pending + " " + plural(j.pending, "новый файл ждёт", "новых файла ждут", "новых файлов ждут") + " обработки. Нажмите «Обновить» через минуту.");
+    if (j.errors && j.errors.length) notes.push("Не удалось прочитать: " + j.errors.map(e => "«" + esc(e.file) + "» (" + esc(e.message) + ")").join("; ") + ".");
+    status(notes.join(" "), notes.length ? "" : "");
+    $("fetchedAt").textContent = "Обновлено в " + new Date().toLocaleTimeString("ru-RU", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit" }) + " мск";
+    render();
+  } catch (e) {
+    status("Не удалось получить данные: " + esc((e && e.message) || e) + ". Проверьте интернет и нажмите «Обновить».", "err");
+    if (!loaded) $("coverage").textContent = "Нет данных";
+  } finally { busy = false; $("refreshBtn").disabled = false; }
+}
+$("refreshBtn").onclick = () => load(true);
+setInterval(() => { if (document.visibilityState === "visible") load(false); }, 5 * 60 * 1000);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && loaded) load(false); });
+load(false);
+})();
+</script>
+</body>
+</html>
