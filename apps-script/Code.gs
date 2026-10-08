@@ -4,8 +4,8 @@
  *
  * Что делает: читает все выгрузки из Metabase (xlsx, csv или Google-таблицы) в папке,
  * склеивает их по дням (для каждого дня берётся самая полная версия) и отдаёт
- * сайту сводные цифры в JSON: просмотры учеников по дням, регионам, школам и 15-минутным
- * интервалам, а также число просмотров учителей (строки без региона).
+ * сайту сводные цифры в JSON: просмотры учеников по дням, регионам, школам, курсам, урокам
+ * и 15-минутным интервалам, а также число просмотров учителей (строки без региона).
  * Уже обработанные файлы запоминаются в служебном файле в той же папке,
  * поэтому каждый файл читается один раз.
  *
@@ -16,6 +16,8 @@ const FOLDER_ID = 'ВСТАВЬТЕ_СЮДА_ID_ПАПКИ';
 const STATE_FILE_NAME = '_dashboard_state.json'; // служебный файл, не удаляйте и не переименовывайте
 const TZ_OFFSET_HOURS = 3;                         // Metabase отдаёт время в UTC, переводим в Москву
 const REFRESH_MINUTES = 5;                         // как часто скрипт сам проверяет папку (после запуска setup)
+const STATE_VERSION = 2;                           // формат служебного файла
+const DETAIL_DAYS = 35;                            // за сколько последних дней сайт получает детализацию по школам и курсам
 const CHUNK = 40000;                               // ответ хранится в кэше кусками (лимит Google — 100 КБ на кусок)
 
 // Куда класть готовые цифры для сайта. Ключ доступа GitHub хранится не здесь, а в
@@ -125,14 +127,42 @@ function cacheGet_() {
   return s;
 }
 
-/** Сайту не нужны школы — убираем их из ответа, чтобы он оставался лёгким. */
+/**
+ * Что получает сайт: дни (как раньше), итоги за всё время по школам, курсам и урокам,
+ * детализацию по дням за последние DETAIL_DAYS дней и справочник школ (школы — по номерам).
+ */
 function publicView_(r) {
-  const days = {};
-  Object.keys(r.days).forEach(function (k) {
+  const keys = Object.keys(r.days).sort();
+  const latest = keys.length ? keys[keys.length - 1] : null;
+  const shift = function (k, n) { const d = new Date(k + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  const slotsFrom = latest ? shift(latest, -7) : null, detailFrom = latest ? shift(latest, -(DETAIL_DAYS - 1)) : null;
+  const add = function (m, k, n) { m[k] = (m[k] || 0) + n; };
+  // Итоги за всё время (по ID школы)
+  const sTot = {}, sFirst = {}, c = {}, l = {}, csTot = {}, cFirst = {};
+  keys.forEach(function (k) {
     const d = r.days[k];
-    days[k] = { date: d.date, total: d.total, students: d.students, teachers: d.teachers, firstAt: d.firstAt, lastAt: d.lastAt, partialStart: d.partialStart, regions: d.regions, slots: d.slots };
+    Object.keys(d.schools || {}).forEach(function (x) { add(sTot, x, d.schools[x]); if (!sFirst[x]) sFirst[x] = k; });
+    Object.keys(d.courses || {}).forEach(function (x) { add(c, x, d.courses[x]); if (!cFirst[x]) cFirst[x] = k; });
+    Object.keys(d.lessons || {}).forEach(function (x) { add(l, x, d.lessons[x]); });
+    Object.keys(d.cs || {}).forEach(function (x) { add(csTot, x, d.cs[x]); });
   });
-  return { generatedAt: r.generatedAt, filesTotal: r.filesTotal, latestFile: r.latestFile, pending: r.pending, errors: r.errors, days: days };
+  // Школы нумеруем, чтобы не повторять длинные ID в каждом дне: schools[i] = [название, код региона, первый день]
+  const sids = Object.keys(sTot).sort(function (a, b) { return sTot[b] - sTot[a]; });
+  const idx = {}; sids.forEach(function (x, i) { idx[x] = i; });
+  const schools = sids.map(function (x) { const inf = (r.schoolInfo || {})[x] || [x, '0']; return [inf[0], inf[1], sFirst[x]]; });
+  const remapS = function (m) { const o = {}; Object.keys(m || {}).forEach(function (x) { if (x in idx) o[idx[x]] = m[x]; }); return o; };
+  const remapCS = function (m) { const o = {}; Object.keys(m || {}).forEach(function (x) { const p = x.indexOf('|'), sid = x.slice(p + 1); if (sid in idx) o[x.slice(0, p) + '|' + idx[sid]] = m[x]; }); return o; };
+  const days = {}, detail = {};
+  keys.forEach(function (k) {
+    const d = r.days[k];
+    const day = { date: d.date, total: d.total, students: d.students, teachers: d.teachers, firstAt: d.firstAt, lastAt: d.lastAt, partialStart: d.partialStart, regions: d.regions };
+    if (k >= slotsFrom) day.slots = d.slots;
+    days[k] = day;
+    if (k >= detailFrom) detail[k] = { s: remapS(d.schools), c: d.courses || {}, l: d.lessons || {}, cs: remapCS(d.cs) };
+  });
+  return { generatedAt: r.generatedAt, filesTotal: r.filesTotal, latestFile: r.latestFile, pending: r.pending, errors: r.errors,
+    days: days, detailFrom: detailFrom, detail: detail, schools: schools,
+    totals: { s: remapS(sTot), c: c, l: l, cs: remapCS(csTot), cFirst: cFirst }, lessonCourse: r.lessonCourse || {} };
 }
 
 function build_(budgetMs) {
@@ -158,6 +188,8 @@ function build_(budgetMs) {
       const rows = isSheet ? readGoogleSheet_(id) : /\.csv$/i.test(name) ? Utilities.parseCsv(f.getBlob().getDataAsString('UTF-8')) : readXlsx_(f.getBlob());
       const agg = aggregate_(rows);
       mergeDays_(state.days, agg.days);
+      Object.keys(agg.schoolInfo).forEach(function (k) { state.schoolInfo[k] = agg.schoolInfo[k]; });
+      Object.keys(agg.lessonCourse).forEach(function (k) { state.lessonCourse[k] = agg.lessonCourse[k]; });
       state.processed[id] = upd;
       changed = true;
     } catch (err) {
@@ -174,7 +206,9 @@ function build_(budgetMs) {
     latestFile: latest,
     pending: pending,
     errors: errors,
-    days: state.days
+    days: state.days,
+    schoolInfo: state.schoolInfo,
+    lessonCourse: state.lessonCourse
   };
 }
 
@@ -185,11 +219,16 @@ function loadState_(folder) {
     const file = it.next();
     try {
       const s = JSON.parse(file.getBlob().getDataAsString('UTF-8'));
-      if (s && s.days && s.processed) return { file: file, state: s };
+      // Состояние старого формата (без школ и курсов) пересобираем заново из всех файлов папки
+      if (s && s.days && s.processed && s.version === STATE_VERSION) return { file: file, state: s };
     } catch (_) { /* повреждён — соберём заново */ }
-    return { file: file, state: { processed: {}, days: {} } };
+    return { file: file, state: emptyState_() };
   }
-  return { file: null, state: { processed: {}, days: {} } };
+  return { file: null, state: emptyState_() };
+}
+
+function emptyState_() {
+  return { version: STATE_VERSION, processed: {}, days: {}, schoolInfo: {}, lessonCourse: {} };
 }
 
 function saveState_(folder, file, state) {
@@ -233,8 +272,12 @@ function aggregate_(rows) {
   const cT = find('createdat', ['created']);
   const cR = find('region', ['region', 'регион']);
   const cS = find('shortschoolname', ['schoolname', 'школ']);
+  const cSid = head.indexOf('schoolid');
+  const cC = find('courseproviderid', ['course']);
+  const cL = find('lessonproviderid', ['lesson']);
   if (cT < 0 || cR < 0) throw new Error('Нет колонок created_at и region — выгрузите тот же вопрос из Metabase без изменения колонок');
-  const days = {};
+  const days = {}, schoolInfo = {}, lessonCourse = {};
+  const str = function (v) { return v == null ? '' : String(v).trim().replace(/\.0+$/, ''); };
   let minKey = null, bad = 0;
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
@@ -244,7 +287,7 @@ function aggregate_(rows) {
     const hm = pad_(t.getUTCHours()) + ':' + pad_(t.getUTCMinutes());
     const rc = parseInt(r[cR], 10), code = isNaN(rc) ? '0' : String(rc);
     let d = days[k];
-    if (!d) { d = days[k] = { date: k, total: 0, students: 0, teachers: 0, firstAt: hm, lastAt: hm, partialStart: false, regions: {}, schools: {}, slots: [] }; for (let s = 0; s < 96; s++) d.slots.push(0); }
+    if (!d) { d = days[k] = { date: k, total: 0, students: 0, teachers: 0, firstAt: hm, lastAt: hm, partialStart: false, regions: {}, schools: {}, courses: {}, lessons: {}, cs: {}, slots: [] }; for (let s = 0; s < 96; s++) d.slots.push(0); }
     d.total++;
     if (hm < d.firstAt) d.firstAt = hm;
     if (hm > d.lastAt) d.lastAt = hm;
@@ -252,14 +295,19 @@ function aggregate_(rows) {
     d.students++;
     d.regions[code] = (d.regions[code] || 0) + 1;
     d.slots[Math.floor((t.getUTCHours() * 60 + t.getUTCMinutes()) / 15)]++;
-    if (cS >= 0) {
-      const sn = r[cS] == null ? '' : String(r[cS]).trim();
-      if (sn) { const sk = code + '|' + sn; d.schools[sk] = (d.schools[sk] || 0) + 1; }
+    const sn = cS >= 0 ? str(r[cS]) : '';
+    const sid = (cSid >= 0 ? str(r[cSid]) : '') || sn;
+    if (sid) { d.schools[sid] = (d.schools[sid] || 0) + 1; schoolInfo[sid] = [sn || sid, code]; }
+    const cid = cC >= 0 ? str(r[cC]) : '', lid = cL >= 0 ? str(r[cL]) : '';
+    if (cid) {
+      d.courses[cid] = (d.courses[cid] || 0) + 1;
+      if (sid) { const pk = cid + '|' + sid; d.cs[pk] = (d.cs[pk] || 0) + 1; }
     }
+    if (lid) { d.lessons[lid] = (d.lessons[lid] || 0) + 1; if (cid) lessonCourse[lid] = cid; }
     if (!minKey || k < minKey) minKey = k;
   }
   if (minKey) days[minKey].partialStart = true; // первый день файла мог начаться не с полуночи
-  return { days: days, bad: bad };
+  return { days: days, schoolInfo: schoolInfo, lessonCourse: lessonCourse, bad: bad };
 }
 
 // ---------- Чтение файлов ----------
