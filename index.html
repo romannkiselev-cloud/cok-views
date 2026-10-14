@@ -765,15 +765,17 @@ function renderLessons() {
   const ok = X.hasP7;
   const ids = new Set(Object.keys(X.E.lesson)); if (C.cok) C.cok.forEach(l => ids.add(String(l)));
   ids.delete("?");
+  const cokSet = new Set((C.cok || []).map(String));
   const all = [...ids].map(l => { const c = lessonCourseOf(l); return { id: l, name: lessonName(l), course: c ? courseName(c) : "Курс не указан", courseId: c || "", total: X.E.lesson[l] || 0, week: X.W7.lesson[l] || 0, prev: X.P7.lesson[l] || 0,
     diff: ok ? (X.W7.lesson[l] || 0) - (X.P7.lesson[l] || 0) : null, peak: peakInfo("lesson", l) }; });
   const courses = [...new Map(all.map(r => [r.courseId, r.course])).entries()].sort((a, b) => a[1].localeCompare(b[1], "ru"));
   $("lesCourse").innerHTML = "<option value=''>Все курсы</option>" + courses.map(([id, n]) => "<option value='" + esc(id) + "'" + (id === ui.les.course ? " selected" : "") + ">" + esc(n) + "</option>").join("");
   const q = ui.les.q.trim().toLowerCase(), pass = r => (!ui.les.course || r.courseId === ui.les.course) && (!q || r.name.toLowerCase().includes(q));
   const zero = all.filter(r => !r.total).length;
-  $("lesCap").textContent = "Топ-10 по просмотрам за всё время, остальные — по кнопке. " + (C.cok ? "В списке все " + fmt(C.cok.length) + " уроков Фоксфорда в «Моей школе», из них ни разу не открывали " + fmt(zero) + ". " : "Пока в списке только уроки, которые открывали хотя бы раз. ") + cmpCaption();
+  $("lesCap").textContent = "Топ-10 по просмотрам за всё время, остальные — по кнопке. " + (C.cok ? "В списке все " + fmt(C.cok.length) + " уроков Фоксфорда в «Моей школе» (ни разу не открывали " + fmt(zero) + ") и уроки, которых в каталоге МШ уже нет, но просмотры по ним были. Название урока ведёт на его страницу в МШ. " : "Пока в списке только уроки, которые открывали хотя бы раз. ") + cmpCaption();
   sortTable($("lesTable"), [
-    { k: "name", label: "Урок", html: r => esc(r.name) + "<span class='sub2'>" + esc(r.course) + "</span>" },
+    { k: "name", label: "Урок", html: r => (C.msh && C.msh[r.id] ? "<a href='https://www.gosuslugi.ru/edu-content/lesson/" + C.msh[r.id] + "' target='_blank' rel='noopener' style='color:inherit'>" + esc(r.name) + "</a>" : esc(r.name)) +
+        (C.cok && !cokSet.has(r.id) ? "<span class='tag'>нет в каталоге МШ</span>" : "") + "<span class='sub2'>" + esc(r.course) + "</span>" },
     { k: "total", label: "Всего", num: true },
     { k: "week", label: "За 7 дней", num: true },
     { k: "diff", label: "Изм.", num: true, html: r => chg(r.week, r.prev, ok) },
