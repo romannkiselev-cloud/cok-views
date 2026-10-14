@@ -116,22 +116,13 @@ details.panel[open] summary { margin-bottom: 12px; }
 .empty { text-align: center; padding: 40px 20px; color: var(--muted); }
 .empty strong { display: block; color: var(--ink); font-size: 17px; margin-bottom: 6px; }
 @media (prefers-reduced-motion: no-preference) { .rank .bar span { transition: width .4s ease; } }
-/* Layout: header with update stamps → tab bar (Общая · Регионы · Школы · Курсы · Дни недели) → active page */
+/* Layout: header with update stamps → tabs (Общая · Регионы · Школы · Курсы · Уроки · Дни недели) → active page */
 :root { --s1: #2C57C9; --s2: #EB6834; --s3: #1BAF7A; --s4: #5A6577; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --s1: #5A82EC; --s2: #D95926; --s3: #199E70; --s4: #9AA5B6; } }
 :root[data-theme="dark"] { --s1: #5A82EC; --s2: #D95926; --s3: #199E70; --s4: #9AA5B6; }
-.lines .legend i { width: 18px; height: 3px; border-radius: 2px; vertical-align: 3px; }
-.lines .legend i.dash { background: repeating-linear-gradient(90deg, var(--s4) 0 5px, transparent 5px 8px) !important; }
-.wd-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
-.wd-card { border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; min-width: 0; }
-.wd-card h3 { font-size: 14px; font-weight: 600; margin: 0 0 10px; display: flex; justify-content: space-between; gap: 8px; }
-.wd-card h3 span { color: var(--muted); font-weight: 400; font-size: 13px; }
-.wd-card .rank { gap: 9px; font-size: 14px; }
-.wd-card .rank .bar { height: 4px; }
-tr.sum td { font-weight: 600; border-top: 1px solid var(--line); }
 .tabs { display: flex; flex-wrap: wrap; gap: 0 4px; border-bottom: 1px solid var(--line); }
-@media (max-width: 480px) { .tabs a { padding: 8px 10px; } }
 .tabs a { padding: 10px 14px; color: var(--muted); text-decoration: none; font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+@media (max-width: 480px) { .tabs a { padding: 8px 10px; } }
 .tabs a:hover { color: var(--ink); }
 .tabs a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
 .tabs a:focus-visible, .sortable button:focus-visible, .linkbtn:focus-visible, .more:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -142,7 +133,7 @@ tr.sum td { font-weight: 600; border-top: 1px solid var(--line); }
 .kpi.small .value { font-size: clamp(26px, 3.4vw, 34px); margin: 6px 0; }
 .kpi.small .meta { font-size: 13px; }
 .panel-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 16px; }
-.panel-head a, .linkbtn { color: var(--accent); text-decoration: none; font-size: 13px; font-weight: 500; background: none; border: 0; padding: 0; font: inherit; font-size: 13px; cursor: pointer; }
+.panel-head a, .linkbtn { color: var(--accent); text-decoration: none; background: none; border: 0; padding: 0; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
 .panel-head a:hover, .linkbtn:hover { text-decoration: underline; }
 .sortable th button { all: unset; cursor: pointer; display: inline-flex; gap: 4px; align-items: center; }
 .sortable th button[aria-sort="descending"]::after { content: "↓"; color: var(--accent); }
@@ -150,8 +141,13 @@ tr.sum td { font-weight: 600; border-top: 1px solid var(--line); }
 .sortable tbody tr.click { cursor: pointer; }
 .sortable tbody tr.click:hover td { background: var(--accent-wash); }
 .sortable tbody tr.sel td { background: var(--accent-wash); }
-td.name { min-width: 180px; }
+td.name { min-width: 200px; }
+td.idx, th.idx { width: 1%; color: var(--faint); font-variant-numeric: tabular-nums; padding-right: 10px; white-space: nowrap; }
 td .sub2 { display: block; color: var(--muted); font-size: 12px; }
+td.peak { min-width: 240px; font-size: 13px; padding-left: 16px; }
+th .sub2 { display: block; font-weight: 400; text-transform: none; letter-spacing: 0; font-size: 11px; }
+.sortable th + th { padding-left: 12px; }
+td.peak b { font-weight: 600; }
 .chg.up { color: var(--good); } .chg.down { color: var(--bad); } .chg.flat { color: var(--faint); }
 .filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
 .filters select, .filters input { font: inherit; font-size: 14px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; }
@@ -163,6 +159,22 @@ td .sub2 { display: block; color: var(--muted); font-size: 12px; }
 .list-plain li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; }
 .list-plain .sub2 { color: var(--muted); font-size: 12px; grid-column: 1 / -1; }
 .detail-title { font-family: var(--font-display); font-weight: 500; font-size: 20px; margin: 0 0 4px; text-wrap: balance; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips span { background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px; font-size: 13px; }
+/* большой график */
+.big { display: grid; grid-template-columns: 48px minmax(0, 1fr); margin-top: 10px; }
+.big .axis svg, .big .plot svg { display: block; }
+.big .axis text, .big .plot text { fill: var(--muted); font-family: var(--font-body); font-size: 11px; }
+.big .plot { overflow-x: auto; position: relative; scrollbar-width: thin; }
+.big .grid line { stroke: var(--line); }
+.big .sep { font-size: 12px; color: var(--muted); }
+.lines .legend i { width: 18px; height: 3px; border-radius: 2px; vertical-align: 3px; }
+.lines .legend i.dash { background: repeating-linear-gradient(90deg, var(--s4) 0 5px, transparent 5px 8px) !important; }
+.wdtab th { white-space: nowrap; }
+.wdtab td { vertical-align: top; font-size: 13px; min-width: 132px; padding-right: 10px; }
+.wdtab td.idx { min-width: 0; }
+.wdtab td .v { display: block; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 12px; margin-top: 2px; }
+.wdtab th.today, .wdtab td.today { background: var(--accent-wash); }
 </style>
 </head>
 <body>
@@ -182,6 +194,7 @@ td .sub2 { display: block; color: var(--muted); font-size: 12px; }
     <a href="#regions" data-tab="regions">Регионы</a>
     <a href="#schools" data-tab="schools">Школы</a>
     <a href="#courses" data-tab="courses">Курсы</a>
+    <a href="#lessons" data-tab="lessons">Уроки</a>
     <a href="#weekdays" data-tab="weekdays">Дни недели</a>
   </nav>
 
@@ -194,6 +207,13 @@ td .sub2 { display: block; color: var(--muted); font-size: 12px; }
 
   <!-- ===== Общая ===== -->
   <section class="page" id="p-overview" hidden>
+    <section class="panel">
+      <h2>Просмотры учеников по дням</h2>
+      <p class="cap" id="bigCap"></p>
+      <div class="big" id="big"></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>за день</span><span><i style="background:var(--accent-soft)"></i>день ещё идёт</span><span><i style="background:var(--s1);height:3px;vertical-align:3px"></i>всего нарастающим итогом</span></div>
+    </section>
+
     <div class="grid3">
       <section class="panel kpi">
         <div class="label">Всего просмотров учеников</div>
@@ -212,29 +232,7 @@ td .sub2 { display: block; color: var(--muted); font-size: 12px; }
       </section>
     </div>
 
-    <div class="grid3" id="reach"></div>
-
-    <div class="grid-week">
-      <section class="panel">
-        <div class="chart-head">
-          <div>
-            <h2>Просмотры учеников за неделю</h2>
-            <p class="cap" id="chartCap"></p>
-          </div>
-          <div class="seg" role="group" aria-label="Режим графика">
-            <button type="button" id="modeDaily" aria-pressed="true">За день</button>
-            <button type="button" id="modeCum" aria-pressed="false">Накопительно</button>
-          </div>
-        </div>
-        <div class="chart" id="chart"></div>
-        <div class="legend"><span><i style="background:var(--accent)"></i>полный день</span><span><i style="background:var(--accent-soft)"></i>неполный день (данные не за все сутки)</span></div>
-      </section>
-      <section class="panel">
-        <h2>По дням</h2>
-        <p class="cap">Просмотры учеников за день и нарастающим итогом на конец дня; учителя отдельно</p>
-        <table id="dayTable"><thead><tr><th>Дата</th><th class="r">Ученики</th><th class="r">Нараст.</th><th class="r">Учителя</th></tr></thead><tbody></tbody></table>
-      </section>
-    </div>
+    <div class="grid2" id="reach"></div>
 
     <div class="grid2">
       <section class="panel">
@@ -243,7 +241,7 @@ td .sub2 { display: block; color: var(--muted); font-size: 12px; }
         <ol class="rank" id="topAll"></ol>
       </section>
       <section class="panel">
-        <div class="panel-head"><h2>Топ-5 регионов по приросту за неделю</h2><a href="#regions">Все регионы →</a></div>
+        <div class="panel-head"><h2>Топ-5 регионов за последние 7 дней</h2><a href="#regions">Все регионы →</a></div>
         <p class="cap" id="topWeekCap"></p>
         <ol class="rank" id="topWeek"></ol>
       </section>
@@ -265,9 +263,12 @@ td .sub2 { display: block; color: var(--muted); font-size: 12px; }
 
   <!-- ===== Регионы ===== -->
   <section class="page" id="p-regions" hidden>
-    <div class="grid3" id="regKpi"></div>
-    <p class="note" id="regNote" hidden></p>
-    <div class="grid2" id="regMoves">
+    <section class="panel">
+      <h2 id="unreachedTitle">Не охваченные регионы</h2>
+      <p class="cap" id="unreachedCap"></p>
+      <div class="chips" id="unreached"></div>
+    </section>
+    <div class="grid2">
       <section class="panel">
         <h2>Сильнее всего выросли</h2>
         <p class="cap" id="regUpCap"></p>
@@ -282,7 +283,7 @@ td .sub2 { display: block; color: var(--muted); font-size: 12px; }
     <section class="panel" id="regDetail" hidden></section>
     <section class="panel">
       <h2>Все регионы</h2>
-      <p class="cap">Нажмите на строку, чтобы открыть регион: динамика по дням и его школы. Колонки сортируются.</p>
+      <p class="cap" id="regTableCap"></p>
       <div class="scroll" id="regTable"></div>
     </section>
   </section>
@@ -290,10 +291,9 @@ td .sub2 { display: block; color: var(--muted); font-size: 12px; }
   <!-- ===== Школы ===== -->
   <section class="page" id="p-schools" hidden>
     <div class="grid4" id="schKpi"></div>
-    <p class="note" id="schNote" hidden></p>
     <section class="panel">
       <h2>Все школы</h2>
-      <p class="cap">Только просмотры учеников. Колонки сортируются.</p>
+      <p class="cap" id="schTableCap"></p>
       <div class="filters">
         <select id="schRegion" aria-label="Регион"><option value="">Все регионы</option></select>
         <input id="schSearch" type="search" placeholder="Поиск по названию школы" aria-label="Поиск по названию школы">
@@ -316,27 +316,26 @@ td .sub2 { display: block; color: var(--muted); font-size: 12px; }
 
   <!-- ===== Курсы ===== -->
   <section class="page" id="p-courses" hidden>
-    <div class="grid3" id="crsKpi"></div>
-    <section class="panel" id="crsDetail" hidden></section>
     <section class="panel">
       <h2>Все курсы</h2>
-      <p class="cap">Нажмите на строку, чтобы открыть курс: динамика, его уроки и школы. Колонки сортируются.</p>
+      <p class="cap" id="crsCap"></p>
       <div class="scroll" id="crsTable"></div>
     </section>
+  </section>
+
+  <!-- ===== Уроки ===== -->
+  <section class="page" id="p-lessons" hidden>
     <section class="panel">
-      <div class="chart-head">
-        <div>
-          <h2>Самые популярные уроки</h2>
-          <p class="cap" id="lesCap"></p>
-        </div>
-        <div class="seg" role="group" aria-label="Период">
-          <button type="button" id="lesAll" aria-pressed="true">За всё время</button>
-          <button type="button" id="lesWeek" aria-pressed="false">За неделю</button>
-        </div>
+      <h2>Все уроки</h2>
+      <p class="cap" id="lesCap"></p>
+      <div class="filters">
+        <select id="lesCourse" aria-label="Курс"><option value="">Все курсы</option></select>
+        <input id="lesSearch" type="search" placeholder="Поиск по названию урока" aria-label="Поиск по названию урока">
       </div>
       <div class="scroll" id="lesTable"></div>
     </section>
   </section>
+
   <!-- ===== Дни недели ===== -->
   <section class="page" id="p-weekdays" hidden>
     <section class="panel lines">
@@ -346,22 +345,19 @@ td .sub2 { display: block; color: var(--muted); font-size: 12px; }
       <div class="legend" id="wdLegend"></div>
     </section>
     <section class="panel">
-      <h2>По дням недели</h2>
-      <p class="cap" id="wdTableCap"></p>
-      <div class="scroll" id="wdTable"></div>
-    </section>
-    <section class="panel">
       <div class="chart-head">
         <div>
-          <h2>Топ-5 курсов по дням недели</h2>
+          <h2>Топ-10 по дням недели</h2>
           <p class="cap" id="wdTopCap"></p>
         </div>
-        <div class="seg" role="group" aria-label="Период">
-          <button type="button" id="wdTopAll" aria-pressed="true">Последние 5 недель</button>
-          <button type="button" id="wdTopWeek" aria-pressed="false">Эта неделя</button>
+        <div class="seg" role="group" aria-label="Что показать" id="wdCat">
+          <button type="button" data-c="course" aria-pressed="true">Курсы</button>
+          <button type="button" data-c="lesson" aria-pressed="false">Уроки</button>
+          <button type="button" data-c="school" aria-pressed="false">Школы</button>
+          <button type="button" data-c="region" aria-pressed="false">Регионы</button>
         </div>
       </div>
-      <div class="wd-grid" id="wdTop"></div>
+      <div class="scroll" id="wdTop"></div>
     </section>
   </section>
 </div>
@@ -390,469 +386,448 @@ const REGIONS = {
   87:"Чукотский автономный округ",89:"Ямало-Ненецкий автономный округ",90:"Московская область",92:"Севастополь",
   93:"Краснодарский край",94:"Байконур",95:"Чеченская Республика",96:"Свердловская область",97:"Москва",98:"Санкт-Петербург",99:"Москва"
 };
+// Субъекты РФ (89): коды 1–89 по Конституции, 80–85 — новые регионы по кодам автономеров, 92 — Севастополь
+const SUBJECT_CODES = [...Array.from({ length: 87 }, (_, i) => i + 1), 89, 92];
 const regionName = c => !c || c === "0" ? "Регион не указан" : (REGIONS[+c] || ("Регион с кодом " + c));
 const MONTHS = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+const MONTHS_N = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 const MON_S = ["янв","фев","мар","апр","мая","июн","июл","авг","сен","окт","ноя","дек"];
 const WD = ["вс","пн","вт","ср","чт","пт","сб"];
+const WD_FULL = ["Понедельник","Вторник","Среда","Четверг","Пятница","Суббота","Воскресенье"];
+const WD_SHORT = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
 const fmt = n => n == null ? "—" : n.toLocaleString("ru-RU");
+const fmt1 = n => n == null ? "—" : (Math.round(n * 10) / 10).toLocaleString("ru-RU");
 const pDate = s => { const [y,m,d] = s.split("-").map(Number); return new Date(Date.UTC(y, m-1, d)); };
 const key = dt => dt.toISOString().slice(0,10);
 const addDays = (s, n) => { const d = pDate(s); d.setUTCDate(d.getUTCDate()+n); return key(d); };
 const longDate = s => { const d = pDate(s); return d.getUTCDate() + " " + MONTHS[d.getUTCMonth()]; };
 const shortDate = s => { const d = pDate(s); return d.getUTCDate() + " " + MON_S[d.getUTCMonth()]; };
 const wd = s => WD[pDate(s).getUTCDay()];
+const dow = k => (pDate(k).getUTCDay() + 6) % 7; // пн = 0
 const $ = id => document.getElementById(id);
 const esc = t => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const plural = (n, a, b, c) => { const m10 = n % 10, m100 = n % 100; return m10 === 1 && m100 !== 11 ? a : (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20) ? b : c); };
 const pct1 = (a, b) => b ? (Math.round(a / b * 1000) / 10).toLocaleString("ru-RU") + "%" : "—";
 const sumVals = m => { let s = 0; for (const k in m) s += m[k]; return s; };
+const add = (m, k, n) => { m[k] = (m[k] || 0) + n; };
+const sortEntries = m => Object.entries(m).sort((a, b) => b[1] - a[1]);
+const countPos = m => Object.values(m).filter(v => v > 0).length;
 
+const START_DEFAULT = "2026-10-06", CHART_END = "2026-12-31";
 const API_URL = "https://script.google.com/macros/s/AKfycbxo5ZSX9LMqDuFtD__1MHJxMdQLc_lHAzmA7fWr_DVR9y9DU2Xrvmk3FIMc1W_Fm0ZGzQ/exec";
-let J = null, C = { courses: {}, lessons: {} }, X = null; // данные, справочник названий, производные
-let loaded = false, mode = "daily", lesMode = "all";
-let tab = "overview";
-const ui = { reg: { sort: "total", dir: -1, sel: null }, sch: { sort: "total", dir: -1, limit: 50, region: "", q: "" }, crs: { sort: "total", dir: -1, sel: null } };
+let J = null, C = { courses: {}, lessons: {}, cok: null }, X = null;
+let loaded = false, tab = "overview", wdCat = "course";
+const ui = {
+  reg: { sort: "total", dir: -1, sel: null }, sch: { sort: "total", dir: -1, limit: 50, region: "", q: "" },
+  crs: { sort: "total", dir: -1, limit: 10 }, les: { sort: "total", dir: -1, limit: 10, course: "", q: "" }
+};
 
 const courseName = id => C.courses[id] || ("Курс " + id);
 const lessonInfo = id => C.lessons[id] || null;
 const lessonName = id => { const l = lessonInfo(id); return l ? l[2] : ("Урок " + id); };
+const lessonCourseOf = id => (J && J.lessonCourse && J.lessonCourse[id]) || (lessonInfo(id) || [])[0] || null;
 
 // ---------- Производные данные ----------
 function derive() {
-  const days = J.days || {};
+  const start = J.start || START_DEFAULT;
+  const days = {};
+  for (const k in (J.days || {})) if (k >= start) days[k] = J.days[k];
   const keys = Object.keys(days).sort();
   if (!keys.length) return null;
   const first = keys[0], latest = keys[keys.length - 1];
-  const wFrom = addDays(latest, -6), pFrom = addDays(latest, -13), pTo = addDays(latest, -7);
-  const hasPrev = first <= pFrom; // прошлая неделя целиком есть в данных
-  const daysWithData = keys.filter(k => k >= wFrom).length;
-  const inRange = (k, a, b) => k >= a && k <= b;
-  const detail = J.detail || {};
-  const sumDetail = (f, a, b) => { const o = {}; for (const k in detail) if (inRange(k, a, b)) { const m = detail[k][f] || {}; for (const x in m) o[x] = (o[x] || 0) + m[x]; } return o; };
-  // регионы — по названию (у одного региона бывает несколько кодов)
-  const regAgg = (a, b) => { const o = {}; keys.forEach(k => { if (!inRange(k, a, b)) return; const r = days[k].regions || {}; for (const c in r) { const n = regionName(c); o[n] = (o[n] || 0) + r[c]; } }); return o; };
-  const T = J.totals || { s: {}, c: {}, l: {}, cs: {}, cFirst: {} };
-  // Начало регулярного учёта: начало последней непрерывной серии дней с заметным числом просмотров
-  // (раньше в выгрузках бывают одиночные, похоже тестовые, просмотры).
-  let trackStart = latest;
-  while (days[addDays(trackStart, -1)] && days[addDays(trackStart, -1)].students >= 10) trackStart = addDays(trackStart, -1);
-  const trackPartial = days[trackStart].firstAt > "06:00";
-  const strayViews = keys.filter(k => k < trackStart).reduce((s, k) => s + days[k].students, 0);
+  const latestDone = days[latest].lastAt >= "23:45";
+  const fullDays = keys.filter(k => k !== latest || latestDone); // для средних по дням недели
+  const nWd = Array(7).fill(0); fullDays.forEach(k => nWd[dow(k)]++);
+  // окна по 7 полных дней: последние (до вчера) и предыдущие
+  const w7To = latestDone ? latest : addDays(latest, -1), w7From = addDays(w7To, -6);
+  const p7To = addDays(w7From, -1), p7From = addDays(p7To, -6);
+  const hasW7 = first <= w7From, hasP7 = first <= p7From;
   const S = J.schools || [];
-  return {
-    days, keys, first, latest, wFrom, pFrom, pTo, hasPrev, daysWithData, trackStart, trackPartial, strayViews,
-    regAll: regAgg("0000", "9999"), regWeek: regAgg(wFrom, latest), regPrev: regAgg(pFrom, pTo), regLast: regAgg(latest, latest),
-    sAll: T.s || {}, sWeek: sumDetail("s", wFrom, latest), sPrev: sumDetail("s", pFrom, pTo),
-    cAll: T.c || {}, cWeek: sumDetail("c", wFrom, latest), cPrev: sumDetail("c", pFrom, pTo),
-    lAll: T.l || {}, lWeek: sumDetail("l", wFrom, latest),
-    csAll: T.cs || {}, csWeek: sumDetail("cs", wFrom, latest),
-    schools: S, lessonCourse: J.lessonCourse || {}, detail, detailFrom: J.detailFrom
-  };
+  const ls = J.ls || {};
+  const regOfSchool = S.map(s => regionName(s[1]));
+  // разбор связок «урок|школа»
+  const E = { course: {}, lesson: {}, school: {}, region: {} }; // всего
+  const W7 = { course: {}, lesson: {}, school: {}, region: {} }, P7 = { course: {}, lesson: {}, school: {}, region: {} };
+  const WDS = { course: {}, lesson: {}, school: {}, region: {} }; // сущность → [7] сумм по полным дням
+  const WDSCH = { course: {}, lesson: {} }; // сущность → [7] → {школа: n}
+  const sFirst = {}, rFirst = {}, lFirst = {};
+  const isFull = new Set(fullDays);
+  for (const k of keys) {
+    const m = ls[k] || {}, d = dow(k), full = isFull.has(k);
+    const inW = k >= w7From && k <= w7To, inP = k >= p7From && k <= p7To;
+    for (const pk in m) {
+      const n = m[pk], p = pk.indexOf("|"), lid = pk.slice(0, p), si = +pk.slice(p + 1);
+      const cid = lessonCourseOf(lid) || "?", reg = regOfSchool[si] || "Регион не указан";
+      const ent = { course: cid, lesson: lid, school: si, region: reg };
+      for (const t in ent) {
+        const e = ent[t];
+        add(E[t], e, n);
+        if (inW) add(W7[t], e, n);
+        if (inP) add(P7[t], e, n);
+        if (full) { const a = WDS[t][e] || (WDS[t][e] = Array(7).fill(0)); a[d] += n; }
+      }
+      if (full) for (const t of ["course", "lesson"]) { const e = ent[t]; const o = WDSCH[t][e] || (WDSCH[t][e] = Array.from({ length: 7 }, () => ({}))); add(o[d], si, n); }
+      if (!(si in sFirst)) sFirst[si] = k;
+      if (!(reg in rFirst)) rFirst[reg] = k;
+      if (!(lid in lFirst)) lFirst[lid] = k;
+    }
+  }
+  return { start, days, keys, first, latest, latestDone, fullDays, nWd, w7From, w7To, p7From, p7To, hasW7, hasP7,
+    schools: S, regOfSchool, E, W7, P7, WDS, WDSCH, sFirst, rFirst, lFirst };
 }
-
-function isPartial(d, latest) {
-  if (!d) return false;
-  if (d.partialStart) return true;
-  if (X && d.date === X.trackStart && X.trackPartial) return true;
-  if (d.date === latest && d.lastAt < "23:45") return true;
-  return false;
-}
+const isPartialDay = k => k === X.latest && !X.latestDone;
+const w7Label = () => shortDate(X.w7From) + " — " + shortDate(X.w7To);
+const p7Label = () => shortDate(X.p7From) + " — " + shortDate(X.p7To);
 function chg(now, prev, ok) {
   if (!ok) return "<span class='chg flat'>—</span>";
   const d = now - prev;
-  if (!prev && now) return "<span class='chg up'>новый</span>";
+  if (!prev && now) return "<span class='chg up'>+" + fmt(now) + " (новый)</span>";
   const cls = d > 0 ? "up" : d < 0 ? "down" : "flat";
   return "<span class='chg " + cls + "'>" + (d > 0 ? "+" : "") + fmt(d) + (prev ? " (" + (d > 0 ? "+" : "") + Math.round(d / prev * 100) + "%)" : "") + "</span>";
 }
-const weekLabel = () => shortDate(X.wFrom) + " — " + shortDate(X.latest);
-const prevLabel = () => shortDate(X.pFrom) + " — " + shortDate(X.pTo);
+/** Пиковый день недели сущности и кто его даёт (регионы и школы). */
+function peakInfo(type, id) {
+  const a = X.WDS[type][id]; if (!a) return null;
+  let best = -1, bestAvg = -1;
+  for (let i = 0; i < 7; i++) if (X.nWd[i]) { const v = a[i] / X.nWd[i]; if (v > bestAvg) { bestAvg = v; best = i; } }
+  if (best < 0 || bestAvg <= 0) return null;
+  const sch = X.WDSCH[type][id][best], tot = sumVals(sch);
+  const regs = {}; for (const si in sch) add(regs, X.regOfSchool[si], sch[si]);
+  return { wd: best, avg: bestAvg, n: X.nWd[best], regions: sortEntries(regs).slice(0, 3), schools: sortEntries(sch).slice(0, 2), tot };
+}
+function peakHtml(p) {
+  if (!p) return "<span class='na'>—</span>";
+  const r = p.regions.map(([n, v]) => esc(n) + " " + pct1(v, p.tot)).join(", ");
+  const s = p.schools.map(([si, v]) => esc((X.schools[si] || ["—"])[0]) + " " + pct1(v, p.tot)).join(", ");
+  return "<b>" + WD_FULL[p.wd] + "</b> · " + fmt1(p.avg) + " в среднем<span class='sub2'>Регионы: " + r + "</span><span class='sub2'>Школы: " + s + "</span>";
+}
 
 // ---------- Общие элементы ----------
 function renderRank(id, list, all, note) {
-  const top = list.slice(0, 5), max = top.length ? top[0][1] : 1;
+  const top = list.slice(0, 5), max = top.length ? Math.abs(top[0][1]) : 1;
   $(id).innerHTML = top.length ? top.map(([n, v, sub], i) =>
-    "<li><span class='pos'>" + (i+1) + "</span><span class='name'>" + esc(n) + (sub ? "<span class='sub2' style='display:block;color:var(--muted);font-size:12px'>" + esc(sub) + "</span>" : "") + "</span><span class='v'>" + fmt(v) + (all ? "<small>" + pct1(v, all) + "</small>" : "") + "</span>" +
-    "<span class='bar'><span style='width:" + (max ? (Math.abs(v)/Math.abs(max)*100).toFixed(1) : 0) + "%'></span></span></li>").join("")
-    : "<li class='na' style='color:var(--muted)'>" + (note || "Нет данных за период") + "</li>";
+    "<li><span class='pos'>" + (i+1) + "</span><span class='name'>" + esc(n) + (sub ? "<span style='display:block;color:var(--muted);font-size:12px'>" + esc(sub) + "</span>" : "") + "</span><span class='v'>" + fmt(v) + (all ? "<small>" + pct1(v, all) + "</small>" : "") + "</span>" +
+    "<span class='bar'><span style='width:" + (max ? (Math.abs(v)/max*100).toFixed(1) : 0) + "%'></span></span></li>").join("")
+    : "<li style='display:block;color:var(--muted)'>" + (note || "Нет данных за период") + "</li>";
 }
-const sortEntries = m => Object.entries(m).sort((a, b) => b[1] - a[1]);
-
 function niceScale(v) { if (v <= 0) return { max: 4, step: 1 }; const raw = v / 4, p = Math.pow(10, Math.floor(Math.log10(raw)));
   let step = 10 * p; for (const m of [1, 2, 5, 10]) if (m * p >= raw) { step = m * p; break; }
   step = Math.max(1, step); return { max: Math.ceil(v / step) * step, step }; }
+function kpiTile(label, value, meta) { return "<section class='panel kpi small'><div class='label'>" + label + "</div><div class='value'>" + value + "</div><div class='meta'>" + (meta || "") + "</div></section>"; }
+function deltaPill(now, prev, ok, what) {
+  if (!ok) return "";
+  const d = now - prev, cls = d > 0 ? "up" : d < 0 ? "down" : "flat", arrow = d > 0 ? "▲" : d < 0 ? "▼" : "■";
+  return "<span><span class='delta " + cls + "'>" + arrow + " " + (d > 0 ? "+" : "") + fmt(d) + "</span> " + (what || "к предыдущим 7 дням") + "</span>";
+}
 
-/** Столбики по дням. pts: [{k, v, partial}], v=null — нет данных. */
-function drawBars(el, pts, valueLabel) {
-  const W = Math.max(300, Math.round(el.clientWidth || 640)), H = pts.length > 10 ? 210 : 250;
-  const many = pts.length > 10, m = { t: 14, r: 8, b: many ? 24 : 40, l: 44 };
+/** Столбики по дням (детали региона). */
+function drawBars(el, pts) {
+  const W = Math.max(300, Math.round(el.clientWidth || 640)), H = 210, m = { t: 14, r: 8, b: 24, l: 44 };
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
   const sc0 = niceScale(Math.max(0, ...pts.map(p => p.v || 0))), maxV = sc0.max;
   const y = v => m.t + ih - (v / maxV) * ih;
-  const step = iw / pts.length, bw = Math.max(2, Math.min(56, step * (many ? 0.7 : 0.62)));
-  const every = many ? Math.ceil(pts.length / Math.max(3, Math.floor(iw / 64))) : 1;
+  const step = iw / pts.length, bw = Math.max(2, Math.min(40, step * 0.7)), every = Math.ceil(pts.length / Math.max(3, Math.floor(iw / 64)));
   let s = "<svg viewBox='0 0 " + W + " " + H + "' role='img' aria-label='Просмотры по дням'><g class='grid'>";
-  for (let v = 0; v <= maxV + 1e-9; v += sc0.step) { const yy = y(v);
-    s += "<line x1='" + m.l + "' x2='" + (W - m.r) + "' y1='" + yy + "' y2='" + yy + "'/><text x='" + (m.l - 8) + "' y='" + (yy + 4) + "' text-anchor='end'>" + fmt(Math.round(v)) + "</text>"; }
+  for (let v = 0; v <= maxV + 1e-9; v += sc0.step) { const yy = y(v); s += "<line x1='" + m.l + "' x2='" + (W - m.r) + "' y1='" + yy + "' y2='" + yy + "'/><text x='" + (m.l - 8) + "' y='" + (yy + 4) + "' text-anchor='end'>" + fmt(Math.round(v)) + "</text>"; }
   s += "</g>";
-  pts.forEach((p, i) => {
-    const cx = m.l + step * i + step / 2, v = p.v;
-    if (v != null && v > 0) {
-      const top = y(v), h = m.t + ih - top, r = Math.min(many ? 2 : 4, h, bw / 2);
-      const x0 = cx - bw/2, x1 = cx + bw/2, base = m.t + ih;
-      s += "<path d='M" + x0 + "," + base + " V" + (top + r) + " Q" + x0 + "," + top + " " + (x0 + r) + "," + top + " H" + (x1 - r) + " Q" + x1 + "," + top + " " + x1 + "," + (top + r) + " V" + base + " Z' fill='" + (p.partial ? "var(--accent-soft)" : "var(--accent)") + "'/>";
-    } else if (v == null && !many) {
-      s += "<text x='" + cx + "' y='" + (m.t + ih - 6) + "' text-anchor='middle' style='fill:var(--faint);font-size:11px'>нет</text>";
-    }
-    if (!many) {
-      s += "<text x='" + cx + "' y='" + (H - 20) + "' text-anchor='middle' style='fill:var(--ink)'>" + shortDate(p.k) + "</text>";
-      s += "<text x='" + cx + "' y='" + (H - 5) + "' text-anchor='middle'>" + wd(p.k) + "</text>";
-    } else if ((pts.length - 1 - i) % every === 0) {
-      s += "<text x='" + cx + "' y='" + (H - 6) + "' text-anchor='middle' style='fill:var(--ink)'>" + shortDate(p.k) + "</text>";
-    }
-    s += "<rect class='hit' data-i='" + i + "' x='" + (cx - step/2) + "' y='" + m.t + "' width='" + step + "' height='" + ih + "' fill='transparent'/>";
-  });
-  s += "<line x1='" + m.l + "' x2='" + (W - m.r) + "' y1='" + (m.t + ih) + "' y2='" + (m.t + ih) + "' style='stroke:var(--faint)'/></svg><div class='tip' hidden></div>";
+  pts.forEach((p, i) => { const cx = m.l + step * i + step / 2;
+    if (p.v > 0) { const top = y(p.v); s += "<rect x='" + (cx - bw/2) + "' y='" + top + "' width='" + bw + "' height='" + (m.t + ih - top) + "' rx='2' fill='" + (p.partial ? "var(--accent-soft)" : "var(--accent)") + "'><title>" + longDate(p.k) + ", " + wd(p.k) + ": " + fmt(p.v) + "</title></rect>"; }
+    if ((pts.length - 1 - i) % every === 0) s += "<text x='" + cx + "' y='" + (H - 6) + "' text-anchor='middle' style='fill:var(--ink)'>" + shortDate(p.k) + "</text>"; });
+  s += "<line x1='" + m.l + "' x2='" + (W - m.r) + "' y1='" + (m.t + ih) + "' y2='" + (m.t + ih) + "' style='stroke:var(--faint)'/></svg>";
   el.innerHTML = s;
-  const tip = el.querySelector(".tip"), svg = el.querySelector("svg");
-  el.querySelectorAll(".hit").forEach(r => {
-    const show = () => { const p = pts[+r.dataset.i], v = p.v;
-      tip.innerHTML = "<b>" + longDate(p.k) + ", " + wd(p.k) + "</b><br>" + (v == null ? "нет данных" : valueLabel + fmt(v)) + (p.partial && v != null ? " · неполный день" : "");
-      const bb = svg.getBoundingClientRect(), sc = bb.width / W, cx = (+r.getAttribute("x") + step/2) * sc;
-      const top = v ? y(v) * sc : (m.t + ih) * sc;
-      tip.style.left = Math.max(70, Math.min(bb.width - 70, cx)) + "px"; tip.style.top = (top - 8) + "px"; tip.hidden = false; };
-    r.addEventListener("mouseenter", show); r.addEventListener("click", show);
-    r.addEventListener("mouseleave", () => { tip.hidden = true; });
-  });
 }
 
-/** Сортируемая таблица. cols: [{k, label, num, html(row)}], st: {sort, dir, limit?, sel?} */
+/** Сортируемая таблица. cols: [{k, label, num, cls, html(row)}], st: {sort, dir, limit?, sel?}; opts: {rerender, onRow, numbered, allLabel} */
 function sortTable(el, cols, rows, st, opts) {
   opts = opts || {};
   const col = cols.find(c => c.k === st.sort) || cols[0];
   const sorted = rows.slice().sort((a, b) => {
     const x = a[col.k], y2 = b[col.k];
-    if (col.num) return ((x ?? -Infinity) - (y2 ?? -Infinity)) * st.dir || (b.total || 0) - (a.total || 0);
+    if (col.num) return ((x ?? -Infinity) - (y2 ?? -Infinity)) * st.dir || (b.total || 0) - (a.total || 0) || String(a.name).localeCompare(String(b.name), "ru");
     return String(x).localeCompare(String(y2), "ru") * st.dir;
   });
   const shown = st.limit ? sorted.slice(0, st.limit) : sorted;
-  let h = "<table class='sortable'><thead><tr>" + cols.map(c => "<th" + (c.num || c.cls ? " class='r'" : "") + "><button type='button' data-k='" + c.k + "'" + (c.k === st.sort ? " aria-sort='" + (st.dir < 0 ? "descending" : "ascending") + "'" : "") + ">" + c.label + "</button></th>").join("") + "</tr></thead><tbody>";
-  h += shown.map(r => "<tr" + (opts.onRow ? " class='click" + (st.sel === r.id ? " sel" : "") + "' data-id='" + esc(r.id) + "' tabindex='0'" : "") + ">" + cols.map(c => "<td class='" + (c.num || c.cls ? "r" : "name") + "'>" + (c.html ? c.html(r) : (c.num ? fmt(r[c.k]) : esc(r[c.k]))) + "</td>").join("") + "</tr>").join("");
-  if (!shown.length) h += "<tr><td class='na' colspan='" + cols.length + "'>Ничего не найдено</td></tr>";
+  let h = "<table class='sortable'><thead><tr>" + (opts.numbered ? "<th class='idx'>№</th>" : "") + cols.map(c => "<th" + (c.num || c.cls === "r" ? " class='r'" : "") + "><button type='button' data-k='" + c.k + "'" + (c.k === st.sort ? " aria-sort='" + (st.dir < 0 ? "descending" : "ascending") + "'" : "") + ">" + c.label + "</button></th>").join("") + "</tr></thead><tbody>";
+  h += shown.map((r, i) => "<tr" + (opts.onRow ? " class='click" + (st.sel === r.id ? " sel" : "") + "' data-id='" + esc(r.id) + "' tabindex='0'" : "") + ">" + (opts.numbered ? "<td class='idx'>" + (i + 1) + "</td>" : "") + cols.map(c => "<td class='" + (c.num || c.cls === "r" ? "r" : (c.cls || "name")) + "'>" + (c.html ? c.html(r) : (c.num ? fmt(r[c.k]) : esc(r[c.k]))) + "</td>").join("") + "</tr>").join("");
+  if (!shown.length) h += "<tr><td class='na' colspan='" + (cols.length + (opts.numbered ? 1 : 0)) + "'>Ничего не найдено</td></tr>";
   h += "</tbody></table>";
-  if (st.limit && sorted.length > st.limit) h += "<button type='button' class='more'>Показать ещё (" + fmt(sorted.length - st.limit) + ")</button>";
+  if (st.limit && sorted.length > st.limit) h += "<button type='button' class='more'>" + (opts.allLabel ? opts.allLabel + " (" + fmt(sorted.length) + ")" : "Показать ещё (" + fmt(sorted.length - st.limit) + ")") + "</button>";
+  else if (opts.allLabel && st.limit === null && sorted.length > 10) h += "<button type='button' class='more' data-collapse='1'>Свернуть до топ-10</button>";
   el.innerHTML = h;
   el.querySelectorAll("th button").forEach(b => b.onclick = () => { const k = b.dataset.k; if (st.sort === k) st.dir = -st.dir; else { st.sort = k; st.dir = (cols.find(c => c.k === k).num ? -1 : 1); } opts.rerender(); });
-  const more = el.querySelector(".more"); if (more) more.onclick = () => { st.limit += 100; opts.rerender(); };
+  const more = el.querySelector(".more");
+  if (more) more.onclick = () => { if (more.dataset.collapse) { st.limit = 10; el.scrollIntoView({ block: "start" }); } else st.limit = opts.allLabel ? null : st.limit + 100; opts.rerender(); };
   if (opts.onRow) el.querySelectorAll("tbody tr.click").forEach(tr => {
     tr.onclick = () => opts.onRow(tr.dataset.id);
     tr.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); opts.onRow(tr.dataset.id); } };
   });
 }
 
-function kpiTile(label, value, meta, cls) {
-  return "<section class='panel kpi small" + (cls ? " " + cls : "") + "'><div class='label'>" + label + "</div><div class='value'>" + value + "</div><div class='meta'>" + (meta || "") + "</div></section>";
-}
-function deltaPill(now, prev, ok) {
-  if (!ok) return "";
-  const d = now - prev, cls = d > 0 ? "up" : d < 0 ? "down" : "flat", arrow = d > 0 ? "▲" : d < 0 ? "▼" : "■";
-  return "<span><span class='delta " + cls + "'>" + arrow + " " + (d > 0 ? "+" : "") + fmt(d) + "</span> к прошлой неделе</span>";
-}
-const countPos = m => Object.values(m).filter(v => v > 0).length;
-
 // ---------- Общая ----------
+function renderBig() {
+  const el = $("big");
+  const dates = []; for (let k = X.first; k <= CHART_END; k = addDays(k, 1)) dates.push(k);
+  const step = 26, bw = 18, W = dates.length * step + 8;
+  const H1 = 170, H2 = 150, LBL = 48, gap = 18, H = H1 + gap + H2 + LBL;
+  let cum = 0; const pts = dates.map(k => { const d = X.days[k]; const v = k > X.latest ? null : (d ? d.students : 0); if (v != null) cum += v; return { k, v, cum: v == null ? null : cum }; });
+  const s1 = niceScale(Math.max(1, ...pts.map(p => p.cum || 0))), s2 = niceScale(Math.max(1, ...pts.map(p => p.v || 0)));
+  const y1 = v => 8 + (H1 - 8) - (v / s1.max) * (H1 - 8), y2 = v => H1 + gap + H2 - (v / s2.max) * (H2 - 10);
+  const x = i => 4 + step * i + step / 2;
+  // ось (не прокручивается)
+  let a = "<svg width='48' height='" + H + "'>";
+  for (let v = 0; v <= s1.max + 1e-9; v += s1.step) a += "<text x='42' y='" + (y1(v) + 4) + "' text-anchor='end'>" + fmt(Math.round(v)) + "</text>";
+  for (let v = 0; v <= s2.max + 1e-9; v += s2.step) a += "<text x='42' y='" + (y2(v) + 4) + "' text-anchor='end'>" + fmt(Math.round(v)) + "</text>";
+  a += "</svg>";
+  let s = "<svg width='" + W + "' height='" + H + "' role='img' aria-label='Просмотры учеников по дням до 31 декабря'><g class='grid'>";
+  for (let v = 0; v <= s1.max + 1e-9; v += s1.step) s += "<line x1='0' x2='" + W + "' y1='" + y1(v) + "' y2='" + y1(v) + "'/>";
+  for (let v = 0; v <= s2.max + 1e-9; v += s2.step) s += "<line x1='0' x2='" + W + "' y1='" + y2(v) + "' y2='" + y2(v) + "'/>";
+  s += "</g>";
+  // выходные — лёгкая подложка, разделители недель и месяцев
+  pts.forEach((p, i) => { const d = dow(p.k);
+    if (d >= 5) s += "<rect x='" + (x(i) - step / 2) + "' y='0' width='" + step + "' height='" + (H - LBL + 32) + "' fill='var(--accent-wash)' opacity='0.6'/>";
+    if (pDate(p.k).getUTCDate() === 1 && i > 0) s += "<line x1='" + (x(i) - step / 2) + "' x2='" + (x(i) - step / 2) + "' y1='0' y2='" + H + "' style='stroke:var(--faint)' stroke-dasharray='2 3'/>"; });
+  // накопительная линия
+  let path = ""; pts.forEach((p, i) => { if (p.cum != null) path += (path ? "L" : "M") + x(i).toFixed(1) + "," + y1(p.cum).toFixed(1); });
+  s += "<path d='" + path + "' fill='none' stroke='var(--s1)' stroke-width='2.5' stroke-linejoin='round'/>";
+  const last = pts.filter(p => p.cum != null).pop(); const li = pts.indexOf(last);
+  s += "<circle cx='" + x(li) + "' cy='" + y1(last.cum) + "' r='4.5' fill='var(--s1)' stroke='var(--surface)' stroke-width='2'/>";
+  s += "<text x='" + (x(li) + 8) + "' y='" + (y1(last.cum) - 6) + "' style='fill:var(--ink);font-weight:600;font-size:12px'>" + fmt(last.cum) + "</text>";
+  // столбики по дням
+  pts.forEach((p, i) => { if (p.v > 0) { const t = y2(p.v); s += "<rect x='" + (x(i) - bw / 2) + "' y='" + t + "' width='" + bw + "' height='" + (H1 + gap + H2 - t) + "' rx='3' fill='" + (isPartialDay(p.k) ? "var(--accent-soft)" : "var(--accent)") + "'/>"; } });
+  s += "<line x1='0' x2='" + W + "' y1='" + (H1 + gap + H2) + "' y2='" + (H1 + gap + H2) + "' style='stroke:var(--faint)'/>";
+  // подписи: число, день недели, месяц
+  const base = H1 + gap + H2;
+  pts.forEach((p, i) => { const dd = pDate(p.k).getUTCDate(), we = dow(p.k) >= 5, today = p.k === X.latest;
+    s += "<text x='" + x(i) + "' y='" + (base + 14) + "' text-anchor='middle' style='fill:" + (today ? "var(--accent)" : "var(--ink)") + ";font-weight:" + (today ? 600 : 400) + "'>" + dd + "</text>";
+    s += "<text x='" + x(i) + "' y='" + (base + 27) + "' text-anchor='middle' style='fill:" + (we ? "var(--bad)" : "var(--muted)") + "'>" + WD_SHORT[dow(p.k)].toLowerCase() + "</text>";
+    if (dd === 1 || i === 0) s += "<text x='" + (x(i) - step / 2 + 2) + "' y='" + (base + 44) + "' style='fill:var(--ink);font-weight:600;font-size:12px'>" + MONTHS_N[pDate(p.k).getUTCMonth()] + "</text>"; });
+  pts.forEach((p, i) => { s += "<rect class='hit' data-i='" + i + "' x='" + (x(i) - step / 2) + "' y='0' width='" + step + "' height='" + base + "' fill='transparent'/>"; });
+  s += "</svg><div class='tip' hidden></div>";
+  el.innerHTML = "<div class='axis'>" + a + "</div><div class='plot' id='bigPlot'>" + s + "</div>";
+  const plot = $("bigPlot"), tip = plot.querySelector(".tip");
+  plot.querySelectorAll(".hit").forEach(r => {
+    const show = () => { const p = pts[+r.dataset.i];
+      tip.innerHTML = "<b>" + longDate(p.k) + ", " + WD_FULL[dow(p.k)].toLowerCase() + "</b><br>" + (p.v == null ? "дата ещё не наступила" : "за день: " + fmt(p.v) + (isPartialDay(p.k) ? " (день ещё идёт)" : "") + "<br>всего на конец дня: " + fmt(p.cum));
+      tip.style.left = Math.max(80, Math.min(plot.scrollWidth - 80, x(+r.dataset.i))) + "px"; tip.style.top = "8px"; tip.style.transform = "translate(-50%, 0)"; tip.hidden = false; };
+    r.addEventListener("mouseenter", show); r.addEventListener("click", show);
+    r.addEventListener("mouseleave", () => { tip.hidden = true; });
+  });
+  // показать последние дни
+  plot.scrollLeft = Math.max(0, x(li) - plot.clientWidth * 0.75);
+  $("bigCap").textContent = "С " + longDate(X.first) + " по 31 декабря. Сверху — всего нарастающим итогом, снизу — просмотры за каждый день; выходные выделены. График прокручивается вбок.";
+}
+
 function renderOverview() {
-  const { days, keys, first, latest } = X;
-  const L = days[latest], F = days[first];
+  renderBig();
+  const { days, keys, latest } = X;
+  const L = days[latest];
   const total = keys.reduce((s,k) => s + days[k].students, 0);
   $("kTotal").textContent = fmt(total);
-  const tm = ["на " + longDate(latest) + ", " + L.lastAt];
-  if (X.strayViews) tm.push("Регулярный учёт идёт с " + longDate(X.trackStart) + " " + X.days[X.trackStart].firstAt + "; " + fmt(X.strayViews) + " " + plural(X.strayViews, "просмотр", "просмотра", "просмотров") + " до этого — единичные, с " + longDate(first) + " " + pDate(first).getUTCFullYear());
-  else if (F.partialStart) tm.push("Учтены просмотры с " + longDate(first) + " " + F.firstAt + ": более ранних в загруженных выгрузках нет");
-  $("kTotalMeta").innerHTML = tm.map(t => "<span>" + t + "</span>").join("");
-
+  $("kTotalMeta").innerHTML = "<span>с " + longDate(X.first) + " по " + longDate(latest) + ", " + L.lastAt + "</span>";
   const tAll = keys.reduce((s,k) => s + (days[k].teachers || 0), 0);
   $("kTeach").textContent = fmt(tAll);
   $("kTeachMeta").innerHTML = "<span><span class='delta flat'>" + pct1(tAll, tAll + total) + " всех просмотров</span></span>" +
-    "<span>за " + longDate(latest) + ": " + fmt(L.teachers || 0) + " (" + pct1(L.teachers || 0, (L.teachers || 0) + L.students) + ")</span>" +
-    "<span>За них не платят, в остальные цифры они не входят</span>";
-
+    "<span>за " + longDate(latest) + ": " + fmt(L.teachers || 0) + "</span><span>За них не платят, в остальные цифры они не входят</span>";
+  // прирост: к тому же дню недели неделей раньше, на то же время
   $("kDayLabel").textContent = "Прирост за " + longDate(latest);
   $("kDay").textContent = "+" + fmt(L.students);
-  const prevKey = addDays(latest, -1), P = days[prevKey];
+  const prevKey = addDays(latest, -7), P = days[prevKey];
   const [hh, mm] = L.lastAt.split(":").map(Number), slot = Math.floor((hh*60+mm)/15);
-  const dm = ["<span>по состоянию на " + L.lastAt + (L.partialStart ? " · данные за день с " + L.firstAt : "") + "</span>"];
-  if (!P) dm.push("<span>За " + longDate(prevKey) + " данных нет, сравнить не с чем</span>");
-  else if (P.partialStart || !P.slots) dm.push("<span>За " + longDate(prevKey) + " данные неполные (с " + P.firstAt + "), сравнение было бы некорректным. Всего за " + longDate(prevKey) + ": " + fmt(P.students) + "</span>");
+  const dm = ["<span>по состоянию на " + L.lastAt + "</span>"];
+  if (!P) dm.push("<span>Сравнение с " + WD_FULL[dow(latest)].toLowerCase() + "ом неделей раньше (" + longDate(prevKey) + ") появится, когда за него будут данные</span>");
   else {
-    const same = P.slots.slice(0, slot+1).reduce((a,b)=>a+b,0), diff = L.students - same;
+    const same = X.latestDone || !P.slots ? P.students : P.slots.slice(0, slot+1).reduce((a,b)=>a+b,0), diff = L.students - same;
     const pct = same ? Math.round(diff/same*100) : null, cls = diff > 0 ? "up" : diff < 0 ? "down" : "flat", arrow = diff > 0 ? "▲" : diff < 0 ? "▼" : "■";
-    const fullDay = L.lastAt >= "23:45";
     dm.push("<span><span class='delta " + cls + "'>" + arrow + " " + (diff>0?"+":"") + fmt(diff) + (pct!=null ? " (" + (pct>0?"+":"") + pct + "%)" : "") + "</span></span>");
-    dm.push("<span>" + (fullDay ? "к полному дню " + longDate(prevKey) + ": " : "к " + longDate(prevKey) + " на то же время: ") + fmt(same) + (fullDay ? "" : " · за весь " + longDate(prevKey) + ": " + fmt(P.students)) + "</span>");
+    dm.push("<span>к " + longDate(prevKey) + " (" + wd(prevKey) + ")" + (X.latestDone ? ": " : " на то же время: ") + fmt(same) + (X.latestDone ? "" : " · за весь день: " + fmt(P.students)) + "</span>");
   }
   $("kDayMeta").innerHTML = dm.join("");
-
-  // Охват
-  const ok = X.hasPrev;
-  const rw = countPos(X.regWeek), rp = countPos(X.regPrev), ra = countPos(X.regAll);
-  const sw = countPos(X.sWeek), sp = countPos(X.sPrev), sa = X.schools.length;
-  const cw = countPos(X.cWeek), cp = countPos(X.cPrev), ca = countPos(X.cAll);
+  // охват
+  const newS = Object.values(X.sFirst).filter(k => k === latest).length, newR = Object.values(X.rFirst).filter(k => k === latest).length;
   $("reach").innerHTML =
-    kpiTile("Регионов за неделю", fmt(rw), deltaPill(rw, rp, ok) + "<span>всего было " + fmt(ra) + "</span>") +
-    kpiTile("Школ за неделю", fmt(sw), deltaPill(sw, sp, ok) + "<span>всего было " + fmt(sa) + "</span>") +
-    kpiTile("Курсов за неделю", fmt(cw), deltaPill(cw, cp, ok) + "<span>всего было " + fmt(ca) + "</span>");
-
-  // Неделя
-  const week = [];
-  let running = keys.filter(k => k < X.wFrom).reduce((s,k)=>s+days[k].students,0);
-  for (let i = 6; i >= 0; i--) {
-    const k = addDays(latest, -i), d = days[k], before = k < first;
-    const v = d ? d.students : (before ? null : 0), tv = d ? d.teachers : (before ? null : 0);
-    if (v != null) running += v;
-    week.push({ k, v, tv, cum: before ? null : running, partial: isPartial(d, latest) });
-  }
-  $("chartCap").textContent = weekLabel() + (X.daysWithData < 7 ? " · данные есть за " + X.daysWithData + " " + plural(X.daysWithData,"день","дня","дней") + " из 7" : "");
-  drawBars($("chart"), week.map(w => ({ k: w.k, v: mode === "daily" ? w.v : w.cum, partial: w.partial })), mode === "daily" ? "за день: " : "всего: ");
-  $("dayTable").querySelector("tbody").innerHTML = week.slice().reverse().map(w =>
-    "<tr><td><span style='white-space:nowrap'>" + shortDate(w.k) + ", " + wd(w.k) + "</span>" + (w.partial && w.v != null ? "<span class='tag'>неполный</span>" : "") + "</td>" +
-    (w.v == null ? "<td class='r na'>нет</td><td class='r na'>—</td><td class='r na'>—</td>" : "<td class='r'>" + fmt(w.v) + "</td><td class='r'>" + fmt(w.cum) + "</td><td class='r na'>" + fmt(w.tv) + "</td>") + "</tr>").join("");
-
-  // Топ-5
-  const allSum = sumVals(X.regAll), weekSum = sumVals(X.regWeek);
-  renderRank("topAll", sortEntries(X.regAll), allSum);
-  renderRank("topWeek", sortEntries(X.regWeek), weekSum);
-  $("topAllCap").textContent = "С " + longDate(first) + " по " + longDate(latest);
-  $("topWeekCap").textContent = "Просмотры за " + weekLabel() + (X.daysWithData < 7 ? " (данные есть за " + X.daysWithData + " " + plural(X.daysWithData,"день","дня","дней") + ")" : "");
-  renderRank("topSchools", sortEntries(X.sAll).map(([i, v]) => [X.schools[i][0], v, regionName(X.schools[i][1])]), sumVals(X.sAll));
-  $("topSchoolsCap").textContent = "С " + longDate(first) + " по " + longDate(latest);
-  renderRank("topCourses", sortEntries(X.cAll).map(([c, v]) => [courseName(c), v]), sumVals(X.cAll));
-  $("topCoursesCap").textContent = "С " + longDate(first) + " по " + longDate(latest);
+    kpiTile("Школ охвачено", fmt(Object.keys(X.E.school).length), "<span><span class='delta " + (newS ? "up" : "flat") + "'>+" + fmt(newS) + "</span> за " + longDate(latest) + "</span><span>школы, ученики которых хотя бы раз открыли наш урок</span>") +
+    kpiTile("Регионов охвачено", fmt(Object.keys(X.E.region).filter(r => r !== "Регион не указан").length) + " <span style='font-size:.5em;color:var(--muted)'>из 89</span>", "<span><span class='delta " + (newR ? "up" : "flat") + "'>+" + fmt(newR) + "</span> за " + longDate(latest) + "</span><span>регионы хотя бы с одним просмотром</span>");
+  // топ-5
+  const reg = {}, reg7 = {};
+  for (const k of keys) { const r = days[k].regions || {}; for (const c in r) add(reg, regionName(c), r[c]); }
+  for (const r in X.W7.region) reg7[r] = X.W7.region[r];
+  renderRank("topAll", sortEntries(reg), sumVals(reg));
+  renderRank("topWeek", X.hasW7 ? sortEntries(reg7) : [], sumVals(reg7), "Появится, когда наберутся 7 полных дней");
+  $("topAllCap").textContent = $("topSchoolsCap").textContent = $("topCoursesCap").textContent = "С " + longDate(X.first) + " по " + longDate(latest);
+  $("topWeekCap").textContent = "Просмотры за " + w7Label() + " (7 полных дней)";
+  renderRank("topSchools", sortEntries(X.E.school).map(([i, v]) => [X.schools[i][0], v, X.regOfSchool[i]]), sumVals(X.E.school));
+  renderRank("topCourses", sortEntries(X.E.course).map(([c, v]) => [courseName(c), v]), sumVals(X.E.course));
 }
 
 // ---------- Регионы ----------
 function regionRows() {
-  const schoolsBy = {}; // регион → {всего, за неделю}
-  X.schools.forEach((s, i) => { const n = regionName(s[1]); const o = schoolsBy[n] || (schoolsBy[n] = { all: 0, week: 0 }); o.all++; if (X.sWeek[i]) o.week++; });
-  return Object.keys(X.regAll).map(n => ({ id: n, name: n, total: X.regAll[n] || 0, week: X.regWeek[n] || 0, prev: X.regPrev[n] || 0, last: X.regLast[n] || 0,
-    diff: X.hasPrev ? (X.regWeek[n] || 0) - (X.regPrev[n] || 0) : null, sWeek: (schoolsBy[n] || {}).week || 0, sAll: (schoolsBy[n] || {}).all || 0 }));
+  const sAll = {};
+  for (const si in X.E.school) add(sAll, X.regOfSchool[si], 1);
+  return Object.keys(X.E.region).filter(n => n !== "Регион не указан").map(n => ({ id: n, name: n, total: X.E.region[n] || 0, week: X.W7.region[n] || 0, prev: X.P7.region[n] || 0,
+    diff: X.hasP7 ? (X.W7.region[n] || 0) - (X.P7.region[n] || 0) : null, schools: sAll[n] || 0 }));
 }
 function renderRegions() {
-  const rows = regionRows(), ok = X.hasPrev;
-  const rw = countPos(X.regWeek);
-  $("regKpi").innerHTML =
-    kpiTile("Регионов за неделю", fmt(rw), deltaPill(rw, countPos(X.regPrev), ok) + "<span>" + weekLabel() + "</span>") +
-    kpiTile("Регионов всего", fmt(rows.length), "<span>с " + longDate(X.first) + "</span>") +
-    kpiTile("Просмотров за неделю", fmt(sumVals(X.regWeek)), deltaPill(sumVals(X.regWeek), sumVals(X.regPrev), ok) + "<span>только ученики</span>");
-  $("regNote").hidden = ok;
-  $("regNote").textContent = "Сравнение с прошлой неделей появится, когда в данных будут обе недели целиком: нужны данные с " + longDate(X.pFrom) + ", а они начинаются с " + longDate(X.first) + ".";
+  const rows = regionRows(), ok = X.hasP7;
+  const reached = new Set(rows.map(r => r.name));
+  const un = [...new Set(SUBJECT_CODES.map(c => REGIONS[c]))].filter(n => !reached.has(n)).sort((a, b) => a.localeCompare(b, "ru"));
+  $("unreachedTitle").textContent = "Не охваченные регионы · " + un.length + " из 89";
+  $("unreachedCap").textContent = "Субъекты РФ, из которых с " + longDate(X.first) + " не было ни одного просмотра учеников";
+  $("unreached").innerHTML = un.length ? un.map(n => "<span>" + esc(n) + "</span>").join("") : "<span>Все регионы охвачены</span>";
   const ups = rows.filter(r => r.diff > 0).sort((a, b) => b.diff - a.diff).map(r => [r.name, r.diff, fmt(r.prev) + " → " + fmt(r.week)]);
   const downs = rows.filter(r => r.diff < 0).sort((a, b) => a.diff - b.diff).map(r => [r.name, r.diff, fmt(r.prev) + " → " + fmt(r.week)]);
-  $("regUpCap").textContent = $("regDownCap").textContent = "Неделя " + weekLabel() + " к неделе " + prevLabel();
-  renderRank("regUp", ok ? ups : [], 0, ok ? "Роста нет" : "Пока не с чем сравнить");
-  renderRank("regDown", ok ? downs : [], 0, ok ? "Падения нет" : "Пока не с чем сравнить");
+  $("regUpCap").textContent = $("regDownCap").textContent = "7 дней " + w7Label() + " к 7 дням " + p7Label();
+  const wait = "Сравнение появится, когда наберутся 14 полных дней (с " + longDate(addDays(X.first, 14)) + ")";
+  renderRank("regUp", ok ? ups : [], 0, ok ? "Роста нет" : wait);
+  renderRank("regDown", ok ? downs : [], 0, ok ? "Падения нет" : wait);
+  $("regTableCap").textContent = "Номер строки показывает, сколько регионов охвачено. Нажмите на регион, чтобы увидеть динамику и школы. 7 дней — " + w7Label() + ".";
   const st = ui.reg;
   sortTable($("regTable"), [
     { k: "name", label: "Регион" },
     { k: "total", label: "Всего", num: true },
-    { k: "week", label: "За неделю", num: true },
-    { k: "diff", label: "Изм. к пред. неделе", num: true, html: r => chg(r.week, r.prev, ok) },
-    { k: "last", label: "За " + shortDate(X.latest), num: true },
-    { k: "sWeek", label: "Школ за неделю", num: true },
-    { k: "sAll", label: "Школ всего", num: true }
-  ], rows, st, { rerender: renderRegions, onRow: id => { st.sel = st.sel === id ? null : id; renderRegions(); if (st.sel) $("regDetail").scrollIntoView({ behavior: "smooth", block: "start" }); } });
+    { k: "week", label: "За 7 дней", num: true },
+    { k: "diff", label: "Изм. к пред. 7 дням", num: true, html: r => chg(r.week, r.prev, ok) },
+    { k: "schools", label: "Школ", num: true }
+  ], rows, st, { numbered: true, rerender: renderRegions, onRow: id => { st.sel = st.sel === id ? null : id; renderRegions(); if (st.sel) $("regDetail").scrollIntoView({ behavior: "smooth", block: "start" }); } });
   renderRegionDetail();
 }
 function renderRegionDetail() {
   const el = $("regDetail"), n = ui.reg.sel;
-  if (!n || !(n in X.regAll)) { el.hidden = true; return; }
+  if (!n || !(n in X.E.region)) { el.hidden = true; return; }
   el.hidden = false;
   const pts = [];
-  for (let i = 29; i >= 0; i--) { const k = addDays(X.latest, -i), d = X.days[k]; let v = null;
-    if (d) { v = 0; const r = d.regions || {}; for (const c in r) if (regionName(c) === n) v += r[c]; } else if (k >= X.first) v = 0;
-    pts.push({ k, v, partial: isPartial(d, X.latest) }); }
-  const sch = X.schools.map((s, i) => ({ id: String(i), name: s[0], total: X.sAll[i] || 0, week: X.sWeek[i] || 0, prev: X.sPrev[i] || 0, first: s[2] })).filter((r, i) => regionName(X.schools[i][1]) === n);
-  el.innerHTML = "<div class='panel-head'><div><h3 class='detail-title'>" + esc(n) + "</h3><p class='cap'>Просмотры учеников за последние 30 дней · всего " + fmt(X.regAll[n]) + ", за неделю " + fmt(X.regWeek[n] || 0) + "</p></div><button type='button' class='linkbtn' id='regClose'>Закрыть</button></div>" +
+  for (let i = 29; i >= 0; i--) { const k = addDays(X.latest, -i); if (k < X.first) continue; const d = X.days[k]; let v = 0;
+    if (d) { const r = d.regions || {}; for (const c in r) if (regionName(c) === n) v += r[c]; }
+    pts.push({ k, v, partial: isPartialDay(k) }); }
+  const sch = Object.keys(X.E.school).filter(si => X.regOfSchool[si] === n).map(si => ({ id: si, name: X.schools[si][0], total: X.E.school[si] || 0, week: X.W7.school[si] || 0, first: X.sFirst[si] }));
+  el.innerHTML = "<div class='panel-head'><div><h3 class='detail-title'>" + esc(n) + "</h3><p class='cap'>Всего " + fmt(X.E.region[n]) + " просмотров, за 7 дней " + fmt(X.W7.region[n] || 0) + "</p></div><button type='button' class='linkbtn' id='regClose'>Закрыть</button></div>" +
     "<div class='chart' id='regChart'></div><h2 style='margin-top:18px'>Школы региона · " + fmt(sch.length) + "</h2><div class='scroll' id='regSchools'></div>";
-  drawBars($("regChart"), pts, "просмотров: ");
+  drawBars($("regChart"), pts);
   const st = ui.regSch || (ui.regSch = { sort: "total", dir: -1, limit: 20 });
   const draw = () => sortTable($("regSchools"), [
-    { k: "name", label: "Школа" }, { k: "total", label: "Всего", num: true }, { k: "week", label: "За неделю", num: true },
+    { k: "name", label: "Школа" }, { k: "total", label: "Всего", num: true }, { k: "week", label: "За 7 дней", num: true },
     { k: "first", label: "Первый просмотр", cls: "r", html: r => shortDate(r.first) }
-  ], sch, st, { rerender: draw });
+  ], sch, st, { numbered: true, rerender: draw });
   draw();
   $("regClose").onclick = () => { ui.reg.sel = null; renderRegions(); };
 }
 
 // ---------- Школы ----------
-function schoolRows() {
-  return X.schools.map((s, i) => ({ id: String(i), name: s[0], region: regionName(s[1]), total: X.sAll[i] || 0, week: X.sWeek[i] || 0, prev: X.sPrev[i] || 0,
-    diff: X.hasPrev ? (X.sWeek[i] || 0) - (X.sPrev[i] || 0) : null, first: s[2] }));
-}
 function renderSchools() {
-  const all = schoolRows(), ok = X.hasPrev;
+  const ok = X.hasP7;
+  const all = Object.keys(X.E.school).map(si => ({ id: si, name: X.schools[si][0], region: X.regOfSchool[si], total: X.E.school[si] || 0, week: X.W7.school[si] || 0, prev: X.P7.school[si] || 0,
+    diff: ok ? (X.W7.school[si] || 0) - (X.P7.school[si] || 0) : null, first: X.sFirst[si] }));
   const active = all.filter(r => r.week > 0).length, prevActive = all.filter(r => r.prev > 0).length;
-  const fresh = all.filter(r => r.first >= X.wFrom), lost = all.filter(r => r.prev > 0 && r.week === 0);
-  const newOk = X.first < X.wFrom; // иначе все школы «новые» просто потому, что данных меньше недели
+  const newOk = X.first < X.w7From, fresh = all.filter(r => r.first >= X.w7From), lost = all.filter(r => r.prev > 0 && r.week === 0);
   $("schKpi").innerHTML =
-    kpiTile("Активных за неделю", fmt(active), deltaPill(active, prevActive, ok) + "<span>" + weekLabel() + "</span>") +
+    kpiTile("Активных за 7 дней", fmt(active), deltaPill(active, prevActive, ok) + "<span>" + w7Label() + "</span>") +
     kpiTile("Всего школ", fmt(all.length), "<span>с " + longDate(X.first) + "</span>") +
-    kpiTile("Новых за неделю", newOk ? fmt(fresh.length) : "—", newOk ? "<span>первый просмотр с " + shortDate(X.wFrom) + "</span>" : "<span>данных пока меньше недели</span>") +
-    kpiTile("Пропавших", ok ? fmt(lost.length) : "—", ok ? "<span>были на прошлой неделе, на этой нет</span>" : "<span>пока не с чем сравнить</span>");
-  $("schNote").hidden = ok;
-  $("schNote").textContent = "Сравнение с прошлой неделей и «пропавшие» школы появятся, когда в данных будут обе недели целиком (с " + longDate(X.pFrom) + ").";
-  // фильтры
-  const sel = $("schRegion");
-  const regs = [...new Set(all.map(r => r.region))].sort((a, b) => a.localeCompare(b, "ru"));
-  const cur = ui.sch.region;
-  sel.innerHTML = "<option value=''>Все регионы</option>" + regs.map(r => "<option" + (r === cur ? " selected" : "") + ">" + esc(r) + "</option>").join("");
-  const q = ui.sch.q.trim().toLowerCase();
-  const pass = r => (!cur || r.region === cur) && (!q || r.name.toLowerCase().includes(q));
-  const st = ui.sch;
+    kpiTile("Новых за 7 дней", newOk ? fmt(fresh.length) : "—", newOk ? "<span>первый просмотр с " + shortDate(X.w7From) + "</span>" : "<span>данных пока меньше 7 дней</span>") +
+    kpiTile("Пропавших", ok ? fmt(lost.length) : "—", ok ? "<span>были в " + p7Label() + ", в " + w7Label() + " нет</span>" : "<span>появится с " + longDate(addDays(X.first, 14)) + "</span>");
+  const regs = [...new Set(all.map(r => r.region))].sort((a, b) => a.localeCompare(b, "ru")), cur = ui.sch.region;
+  $("schRegion").innerHTML = "<option value=''>Все регионы</option>" + regs.map(r => "<option" + (r === cur ? " selected" : "") + ">" + esc(r) + "</option>").join("");
+  const q = ui.sch.q.trim().toLowerCase(), pass = r => (!cur || r.region === cur) && (!q || r.name.toLowerCase().includes(q));
+  $("schTableCap").textContent = "Только просмотры учеников. 7 дней — " + w7Label() + ". Колонки сортируются.";
   sortTable($("schTable"), [
     { k: "name", label: "Школа", html: r => esc(r.name) + "<span class='sub2'>" + esc(r.region) + "</span>" },
-    { k: "total", label: "Всего", num: true },
-    { k: "week", label: "За неделю", num: true },
+    { k: "total", label: "Всего", num: true }, { k: "week", label: "За 7 дней", num: true },
     { k: "diff", label: "Изм.", num: true, html: r => chg(r.week, r.prev, ok) },
     { k: "first", label: "Первый просмотр", cls: "r", html: r => shortDate(r.first) }
-  ], all.filter(pass), st, { rerender: renderSchools });
+  ], all.filter(pass), ui.sch, { numbered: true, rerender: renderSchools });
   const li = (r, v, sub) => "<li><span>" + esc(r.name) + "</span><span class='num'>" + v + "</span><span class='sub2'>" + esc(sub) + "</span></li>";
-  $("schNewCap").textContent = newOk ? "Первый просмотр за " + weekLabel() : "Появится, когда в данных будет больше недели";
+  $("schNewCap").textContent = newOk ? "Первый просмотр за " + w7Label() : "Появится, когда в данных будет больше 7 дней";
   const fr = fresh.filter(pass).sort((a, b) => b.week - a.week);
   $("schNew").innerHTML = !newOk ? "" : fr.length ? fr.slice(0, 30).map(r => li(r, fmt(r.week), r.region + " · с " + shortDate(r.first))).join("") + (fr.length > 30 ? "<li class='sub2'>и ещё " + (fr.length - 30) + "</li>" : "") : "<li class='na'>Новых школ нет</li>";
-  $("schLostCap").textContent = ok ? "Были на неделе " + prevLabel() + ", на неделе " + weekLabel() + " просмотров нет" : "Появится, когда в данных будут обе недели целиком";
+  $("schLostCap").textContent = ok ? "Были в " + p7Label() + ", в " + w7Label() + " просмотров нет" : "Появится с " + longDate(addDays(X.first, 14));
   const ls = lost.filter(pass).sort((a, b) => b.prev - a.prev);
-  $("schLost").innerHTML = !ok ? "" : ls.length ? ls.slice(0, 30).map(r => li(r, fmt(r.prev), r.region + " · просмотров на прошлой неделе")).join("") + (ls.length > 30 ? "<li class='sub2'>и ещё " + (ls.length - 30) + "</li>" : "") : "<li class='na'>Таких школ нет</li>";
+  $("schLost").innerHTML = !ok ? "" : ls.length ? ls.slice(0, 30).map(r => li(r, fmt(r.prev), r.region + " · просмотров в " + p7Label())).join("") + (ls.length > 30 ? "<li class='sub2'>и ещё " + (ls.length - 30) + "</li>" : "") : "<li class='na'>Таких школ нет</li>";
 }
 $("schRegion").onchange = e => { ui.sch.region = e.target.value; ui.sch.limit = 50; renderSchools(); };
 let qT; $("schSearch").oninput = e => { clearTimeout(qT); qT = setTimeout(() => { ui.sch.q = e.target.value; ui.sch.limit = 50; renderSchools(); }, 150); };
 
-// ---------- Курсы ----------
-function courseRows() {
-  const lessonsBy = {}, lessonsWeekBy = {}, schoolsBy = {};
-  for (const l in X.lAll) { const c = X.lessonCourse[l] || (lessonInfo(l) || [])[0]; if (c) lessonsBy[c] = (lessonsBy[c] || 0) + 1; }
-  for (const l in X.lWeek) { const c = X.lessonCourse[l] || (lessonInfo(l) || [])[0]; if (c) lessonsWeekBy[c] = (lessonsWeekBy[c] || 0) + 1; }
-  for (const p in X.csAll) { const c = p.split("|")[0]; schoolsBy[c] = (schoolsBy[c] || 0) + 1; }
-  return Object.keys(X.cAll).map(c => ({ id: c, name: courseName(c), total: X.cAll[c] || 0, week: X.cWeek[c] || 0, prev: X.cPrev[c] || 0,
-    diff: X.hasPrev ? (X.cWeek[c] || 0) - (X.cPrev[c] || 0) : null, lessons: lessonsBy[c] || 0, lessonsWeek: lessonsWeekBy[c] || 0, schools: schoolsBy[c] || 0 }));
-}
+// ---------- Курсы и уроки ----------
+const PEAK_NOTE = () => "Пиковый день — день недели, в который курс в среднем смотрят больше всего (среднее по полным дням с " + longDate(X.first) + "); ниже — какие регионы и школы дают этот пик.";
+function cmpCaption() { return X.hasP7 ? "7 дней — " + w7Label() + ", сравнение с " + p7Label() + "." : "7 дней — " + w7Label() + ". Сравнение с предыдущими 7 днями появится с " + longDate(addDays(X.first, 14)) + "."; }
 function renderCourses() {
-  const rows = courseRows(), ok = X.hasPrev;
-  const cw = countPos(X.cWeek), lw = countPos(X.lWeek);
-  const schoolsWeek = new Set(Object.keys(X.csWeek).map(p => p.split("|")[1])).size;
-  $("crsKpi").innerHTML =
-    kpiTile("Курсов за неделю", fmt(cw), deltaPill(cw, countPos(X.cPrev), ok) + "<span>всего было " + fmt(rows.length) + "</span>") +
-    kpiTile("Уроков открывали за неделю", fmt(lw), "<span>всего открывали " + fmt(countPos(X.lAll)) + "</span>") +
-    kpiTile("Школ с просмотрами за неделю", fmt(schoolsWeek), "<span>" + weekLabel() + "</span>");
-  const st = ui.crs;
+  const ok = X.hasP7;
+  const ids = new Set(Object.keys(X.E.course)); if (C.cokCourses) C.cokCourses.forEach(c => ids.add(String(c)));
+  const rows = [...ids].filter(c => c !== "?").map(c => ({ id: c, name: courseName(c), total: X.E.course[c] || 0, week: X.W7.course[c] || 0, prev: X.P7.course[c] || 0,
+    diff: ok ? (X.W7.course[c] || 0) - (X.P7.course[c] || 0) : null, peak: peakInfo("course", c) }));
+  $("crsCap").textContent = "Топ-10 по просмотрам за всё время, остальные — по кнопке. " + cmpCaption() + " " + PEAK_NOTE();
   sortTable($("crsTable"), [
     { k: "name", label: "Курс" },
     { k: "total", label: "Всего", num: true },
-    { k: "week", label: "За неделю", num: true },
+    { k: "week", label: "За 7 дней", num: true },
     { k: "diff", label: "Изм.", num: true, html: r => chg(r.week, r.prev, ok) },
-    { k: "lessons", label: "Уроков открывали", num: true },
-    { k: "schools", label: "Школ", num: true }
-  ], rows, st, { rerender: renderCourses, onRow: id => { st.sel = st.sel === id ? null : id; renderCourses(); if (st.sel) $("crsDetail").scrollIntoView({ behavior: "smooth", block: "start" }); } });
-  renderCourseDetail();
-  renderLessons();
-}
-function renderCourseDetail() {
-  const el = $("crsDetail"), c = ui.crs.sel;
-  if (!c || !(c in X.cAll)) { el.hidden = true; return; }
-  el.hidden = false;
-  const pts = [];
-  for (let i = 29; i >= 0; i--) { const k = addDays(X.latest, -i), d = X.detail[k];
-    pts.push({ k, v: d ? ((d.c || {})[c] || 0) : (X.days[k] ? null : (k >= X.first ? 0 : null)), partial: isPartial(X.days[k], X.latest) }); }
-  const les = Object.keys(X.lAll).filter(l => (X.lessonCourse[l] || (lessonInfo(l) || [])[0]) == c)
-    .map(l => { const inf = lessonInfo(l); return { id: l, name: lessonName(l), pos: inf && inf[1] != null ? inf[1] : null, total: X.lAll[l] || 0, week: X.lWeek[l] || 0 }; });
-  const sch = Object.keys(X.csAll).filter(p => p.split("|")[0] === c).map(p => { const i = +p.split("|")[1], s = X.schools[i] || ["—", "0"]; return { id: String(i), name: s[0], region: regionName(s[1]), total: X.csAll[p], week: X.csWeek[p] || 0 }; });
-  el.innerHTML = "<div class='panel-head'><div><h3 class='detail-title'>" + esc(courseName(c)) + "</h3><p class='cap'>Просмотры учеников за последние 30 дней · всего " + fmt(X.cAll[c]) + ", за неделю " + fmt(X.cWeek[c] || 0) + "</p></div><button type='button' class='linkbtn' id='crsClose'>Закрыть</button></div>" +
-    "<div class='chart' id='crsChart'></div><div class='grid2' style='margin-top:18px'><div><h2>Уроки курса · " + fmt(les.length) + "</h2><div class='scroll' id='crsLessons'></div></div><div><h2>Школы · " + fmt(sch.length) + "</h2><div class='scroll' id='crsSchools'></div></div></div>";
-  drawBars($("crsChart"), pts, "просмотров: ");
-  const s1 = ui.crsLes || (ui.crsLes = { sort: "total", dir: -1, limit: 15 }), s2 = ui.crsSch || (ui.crsSch = { sort: "total", dir: -1, limit: 15 });
-  const d1 = () => sortTable($("crsLessons"), [{ k: "name", label: "Урок", html: r => (r.pos != null ? "<span class='sub2'>Урок " + r.pos + "</span>" : "") + esc(r.name) }, { k: "total", label: "Всего", num: true }, { k: "week", label: "Неделя", num: true }], les, s1, { rerender: d1 });
-  const d2 = () => sortTable($("crsSchools"), [{ k: "name", label: "Школа", html: r => esc(r.name) + "<span class='sub2'>" + esc(r.region) + "</span>" }, { k: "total", label: "Всего", num: true }, { k: "week", label: "Неделя", num: true }], sch, s2, { rerender: d2 });
-  d1(); d2();
-  $("crsClose").onclick = () => { ui.crs.sel = null; renderCourses(); };
+    { k: "peakAvg", label: "Пиковый день и кто его даёт", cls: "peak", html: r => peakHtml(r.peak) }
+  ], rows.map(r => Object.assign(r, { peakAvg: r.peak ? r.peak.avg : 0 })), ui.crs, { numbered: true, allLabel: "Показать все курсы", rerender: renderCourses });
 }
 function renderLessons() {
-  const src = lesMode === "all" ? X.lAll : X.lWeek;
-  const rows = Object.keys(src).map(l => { const c = X.lessonCourse[l] || (lessonInfo(l) || [])[0]; return { id: l, name: lessonName(l), course: c ? courseName(c) : "—", total: X.lAll[l] || 0, week: X.lWeek[l] || 0 }; });
-  $("lesCap").textContent = lesMode === "all" ? "С " + longDate(X.first) + " по " + longDate(X.latest) + " · топ-20" : "За " + weekLabel() + " · топ-20";
-  const st = { sort: lesMode === "all" ? "total" : "week", dir: -1, limit: 20 };
+  const ok = X.hasP7;
+  const ids = new Set(Object.keys(X.E.lesson)); if (C.cok) C.cok.forEach(l => ids.add(String(l)));
+  ids.delete("?");
+  const all = [...ids].map(l => { const c = lessonCourseOf(l); return { id: l, name: lessonName(l), course: c ? courseName(c) : "Курс не указан", courseId: c || "", total: X.E.lesson[l] || 0, week: X.W7.lesson[l] || 0, prev: X.P7.lesson[l] || 0,
+    diff: ok ? (X.W7.lesson[l] || 0) - (X.P7.lesson[l] || 0) : null, peak: peakInfo("lesson", l) }; });
+  const courses = [...new Map(all.map(r => [r.courseId, r.course])).entries()].sort((a, b) => a[1].localeCompare(b[1], "ru"));
+  $("lesCourse").innerHTML = "<option value=''>Все курсы</option>" + courses.map(([id, n]) => "<option value='" + esc(id) + "'" + (id === ui.les.course ? " selected" : "") + ">" + esc(n) + "</option>").join("");
+  const q = ui.les.q.trim().toLowerCase(), pass = r => (!ui.les.course || r.courseId === ui.les.course) && (!q || r.name.toLowerCase().includes(q));
+  const zero = all.filter(r => !r.total).length;
+  $("lesCap").textContent = "Топ-10 по просмотрам за всё время, остальные — по кнопке. " + (C.cok ? "В списке все " + fmt(C.cok.length) + " уроков Фоксфорда в «Моей школе», из них ни разу не открывали " + fmt(zero) + ". " : "Пока в списке только уроки, которые открывали хотя бы раз. ") + cmpCaption();
   sortTable($("lesTable"), [
     { k: "name", label: "Урок", html: r => esc(r.name) + "<span class='sub2'>" + esc(r.course) + "</span>" },
-    { k: "total", label: "Всего", num: true }, { k: "week", label: "За неделю", num: true }
-  ], rows, st, { rerender: renderLessons });
-  const more = $("lesTable").querySelector(".more"); if (more) more.remove();
+    { k: "total", label: "Всего", num: true },
+    { k: "week", label: "За 7 дней", num: true },
+    { k: "diff", label: "Изм.", num: true, html: r => chg(r.week, r.prev, ok) },
+    { k: "peakAvg", label: "Пиковый день и кто его даёт", cls: "peak", html: r => peakHtml(r.peak) }
+  ], all.filter(pass).map(r => Object.assign(r, { peakAvg: r.peak ? r.peak.avg : 0 })), ui.les, { numbered: true, allLabel: "Показать все уроки", rerender: renderLessons });
 }
-$("lesAll").onclick = () => { lesMode = "all"; $("lesAll").setAttribute("aria-pressed", "true"); $("lesWeek").setAttribute("aria-pressed", "false"); renderLessons(); };
-$("lesWeek").onclick = () => { lesMode = "week"; $("lesWeek").setAttribute("aria-pressed", "true"); $("lesAll").setAttribute("aria-pressed", "false"); renderLessons(); };
+$("lesCourse").onchange = e => { ui.les.course = e.target.value; renderLessons(); };
+let lT; $("lesSearch").oninput = e => { clearTimeout(lT); lT = setTimeout(() => { ui.les.q = e.target.value; renderLessons(); }, 150); };
 
 // ---------- Дни недели ----------
-const WD_FULL = ["Понедельник","Вторник","Среда","Четверг","Пятница","Суббота","Воскресенье"];
-const WD_SHORT = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
-let wdTopMode = "all";
-const dow = k => (pDate(k).getUTCDay() + 6) % 7; // пн = 0
 const mondayOf = k => addDays(k, -dow(k));
-/** Начало непрерывного учёта: самый ранний день, от которого до последнего дня данные есть каждый день. */
-function trackingStart() { return X.trackStart; }
-/** Та же по счёту неделя месяц назад: N-я неделя месяца (неделя с 1-м числом — первая). */
 function monthAgoMonday() {
   const d = pDate(X.latest), y = d.getUTCFullYear(), m = d.getUTCMonth();
   const first = key(new Date(Date.UTC(y, m, 1))), idx = Math.ceil((d.getUTCDate() + dow(first)) / 7);
   const pFirst = key(new Date(Date.UTC(y, m - 1, 1))), pLast = key(new Date(Date.UTC(y, m, 0)));
   let mon = addDays(addDays(pFirst, -dow(pFirst)), 7 * (idx - 1));
   while (mon > pLast) mon = addDays(mon, -7);
-  return { mon, idx, monthName: ["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"][d.getUTCMonth()] };
+  return { mon, idx };
 }
 function renderWeekdays() {
-  const start = trackingStart();
+  const start = X.first, todayIdx = dow(X.latest), todayPartial = !X.latestDone;
   const val = k => k < start || k > X.latest ? null : (X.days[k] ? X.days[k].students : 0);
   const cw = mondayOf(X.latest), pw = addDays(cw, -7), ma = monthAgoMonday();
   const week = mon => Array.from({ length: 7 }, (_, i) => addDays(mon, i));
   const cur = week(cw), prev = week(pw), mago = week(ma.mon);
-  // среднее по полным дням непрерывного учёта
-  const sums = Array(7).fill(0), cnt = Array(7).fill(0);
-  for (let k = start; k <= X.latest; k = addDays(k, 1)) { const d = X.days[k]; if (!d || isPartial(d, X.latest)) continue; sums[dow(k)] += d.students; cnt[dow(k)]++; }
-  const avg = sums.map((s, i) => cnt[i] ? Math.round(s / cnt[i] * 10) / 10 : null);
-  const todayIdx = dow(X.latest), todayPartial = isPartial(X.days[X.latest], X.latest);
+  // среднее: по всем полным дням с начала учёта (сегодняшний день не входит, пока не закончился)
+  const sums = Array(7).fill(0); X.fullDays.forEach(k => { sums[dow(k)] += X.days[k].students; });
+  const avg = sums.map((s, i) => X.nWd[i] ? s / X.nWd[i] : null);
   const series = [
     { name: "Эта неделя · " + shortDate(cur[0]) + " — " + shortDate(cur[6]), color: "var(--s1)", width: 3, vals: cur.map(val), dates: cur },
     { name: "Прошлая неделя · " + shortDate(prev[0]) + " — " + shortDate(prev[6]), color: "var(--s2)", width: 2, vals: prev.map(val), dates: prev },
     { name: ma.idx + "-я неделя прошлого месяца · " + shortDate(mago[0]) + " — " + shortDate(mago[6]), color: "var(--s3)", width: 2, vals: mago.map(val), dates: mago },
     { name: "В среднем с " + longDate(start), color: "var(--s4)", width: 2, dash: true, vals: avg }
   ];
-  $("wdCap").textContent = "Просмотры учеников по дням недели. Регулярный учёт идёт с " + longDate(start) + (X.trackPartial ? " " + X.days[start].firstAt + " (этот день в среднее не входит)" : "") + (todayPartial ? ". Текущий день (" + WD_FULL[todayIdx].toLowerCase() + ", " + shortDate(X.latest) + ") ещё идёт: данные на " + X.days[X.latest].lastAt : "") + ".";
+  $("wdCap").textContent = "Просмотры учеников по дням недели. Среднее — по всем полным дням с " + longDate(start) + " (" + WD_SHORT.map((d, i) => d.toLowerCase() + " — " + X.nWd[i]).join(", ") + " дн.)" + (todayPartial ? ". Сегодняшний день (" + shortDate(X.latest) + ") ещё идёт и в среднее не входит" : "") + ".";
   $("wdLegend").innerHTML = series.map(s => "<span><i class='" + (s.dash ? "dash" : "") + "' style='background:" + s.color + "'></i>" + esc(s.name) + "</span>").join("");
   drawLines($("wdChart"), series, todayPartial ? todayIdx : -1);
-  // таблица
-  const cell = (v, k) => v == null ? "<td class='r na'>" + (k && k > X.latest ? "" : "нет данных") + "</td>" : "<td class='r'>" + fmt(v) + "</td>";
-  let h = "<table><thead><tr><th>День</th><th class='r'>Эта неделя</th><th class='r'>Прошлая</th><th class='r'>Месяц назад</th><th class='r'>В среднем</th></tr></thead><tbody>";
-  for (let i = 0; i < 7; i++) {
-    h += "<tr><td><span style='white-space:nowrap'>" + WD_FULL[i] + "</span>" + (cur[i] <= X.latest && isPartial(X.days[cur[i]], X.latest) ? "<span class='tag'>неполный</span>" : "") + "</td>" +
-      cell(series[0].vals[i], cur[i]) + cell(series[1].vals[i], prev[i]) + cell(series[2].vals[i], mago[i]) +
-      (avg[i] == null ? "<td class='r na'>—</td>" : "<td class='r'>" + avg[i].toLocaleString("ru-RU") + "<span class='sub2'>по " + cnt[i] + " " + plural(cnt[i], "дню", "дням", "дням") + "</span></td>") + "</tr>";
-  }
-  const upTo = arr => { let s = 0, any = false; for (let i = 0; i <= todayIdx; i++) if (arr[i] != null) { s += arr[i]; any = true; } return any ? s : null; };
-  const avgUpTo = avg.slice(0, todayIdx + 1).every(v => v != null) ? Math.round(avg.slice(0, todayIdx + 1).reduce((a, b) => a + b, 0)) : null;
-  h += "<tr class='sum'><td>Итого пн–" + WD_SHORT[todayIdx].toLowerCase() + "</td>" + cell(upTo(series[0].vals)) + cell(upTo(series[1].vals)) + cell(upTo(series[2].vals)) + (avgUpTo == null ? "<td class='r na'>—</td>" : "<td class='r'>" + fmt(avgUpTo) + "</td>") + "</tr>";
-  h += "</tbody></table>";
-  $("wdTable").innerHTML = h;
-  $("wdTableCap").textContent = "«Нет данных» — день до начала регулярного учёта (" + longDate(start) + "). Итого — сумма с понедельника по " + WD_FULL[todayIdx].toLowerCase() + " каждой недели" + (todayPartial ? "; сегодняшний день в текущей неделе неполный" : "") + ".";
-  // топ-5 курсов по дням недели
-  const from = wdTopMode === "week" ? cw : (X.detailFrom && X.detailFrom > start ? X.detailFrom : start);
-  const by = Array.from({ length: 7 }, () => ({})), nDays = Array(7).fill(0);
-  for (const k in X.detail) { if (k < from || k > X.latest) continue; const i = dow(k); nDays[i]++; const c = X.detail[k].c || {}; for (const x in c) by[i][x] = (by[i][x] || 0) + c[x]; }
-  $("wdTopCap").textContent = wdTopMode === "week" ? "Просмотры за каждый день недели " + shortDate(cw) + " — " + shortDate(cur[6]) : "Сумма просмотров по каждому дню недели с " + longDate(from) + " (данные по курсам хранятся за последние 5 недель)";
-  $("wdTop").innerHTML = WD_FULL.map((n, i) => {
-    const list = sortEntries(by[i]).slice(0, 5), all = sumVals(by[i]), max = list.length ? list[0][1] : 1;
-    const sub = wdTopMode === "week" ? shortDate(cur[i]) : (nDays[i] ? nDays[i] + " " + plural(nDays[i], "день", "дня", "дней") : "");
-    return "<div class='wd-card'><h3>" + n + "<span>" + sub + "</span></h3><ol class='rank'>" + (list.length ? list.map(([c, v], j) =>
-      "<li><span class='pos'>" + (j + 1) + "</span><span class='name'>" + esc(courseName(c)) + "</span><span class='v'>" + fmt(v) + "<small>" + pct1(v, all) + "</small></span><span class='bar'><span style='width:" + (v / max * 100).toFixed(1) + "%'></span></span></li>").join("")
-      : "<li class='na' style='color:var(--muted)'>" + (wdTopMode === "week" && cur[i] > X.latest ? "День ещё не наступил" : "Нет просмотров") + "</li>") + "</ol></div>";
-  }).join("");
+  renderWdTop();
 }
-/** Линии по дням недели. series: [{name, color, width, dash, vals[7], dates?}] */
+function renderWdTop() {
+  const names = { course: c => courseName(c), lesson: l => lessonName(l), school: si => (X.schools[si] || ["—"])[0], region: r => r };
+  const subs = { lesson: l => { const c = lessonCourseOf(l); return c ? courseName(c) : ""; }, school: si => X.regOfSchool[si] || "" };
+  const label = { course: "курсов", lesson: "уроков", school: "школ", region: "регионов" }[wdCat];
+  const src = X.WDS[wdCat], todayIdx = dow(X.latest);
+  const cols = WD_FULL.map((_, d) => X.nWd[d] ? Object.keys(src).filter(e => e !== "?" && e !== "Регион не указан").map(e => [e, src[e][d] / X.nWd[d]]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 10) : []);
+  $("wdTopCap").textContent = "Топ-10 " + label + " по среднему числу просмотров учеников в этот день недели — по всем полным дням с " + longDate(X.first) + ".";
+  let h = "<table class='wdtab'><thead><tr><th class='idx'>№</th>" + WD_FULL.map((d, i) => "<th" + (i === todayIdx ? " class='today'" : "") + ">" + d + "<span class='sub2'>" + (X.nWd[i] ? "по " + X.nWd[i] + " " + plural(X.nWd[i], "дню", "дням", "дням") : "нет полных дней") + "</span></th>").join("") + "</tr></thead><tbody>";
+  for (let r = 0; r < 10; r++) {
+    h += "<tr><td class='idx'>" + (r + 1) + "</td>" + cols.map((c, d) => { const x = c[r];
+      return "<td" + (d === todayIdx ? " class='today'" : "") + ">" + (x ? esc(names[wdCat](x[0])) + (subs[wdCat] ? "<span class='sub2'>" + esc(subs[wdCat](x[0])) + "</span>" : "") + "<span class='v'>" + fmt1(x[1]) + " в среднем</span>" : "") + "</td>"; }).join("") + "</tr>";
+  }
+  $("wdTop").innerHTML = h + "</tbody></table>";
+}
+document.querySelectorAll("#wdCat button").forEach(b => b.onclick = () => { wdCat = b.dataset.c; document.querySelectorAll("#wdCat button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); renderWdTop(); });
 function drawLines(el, series, partialIdx) {
   const W = Math.max(300, Math.round(el.clientWidth || 640)), H = 280, m = { t: 16, r: 16, b: 30, l: 44 };
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
@@ -878,71 +853,62 @@ function drawLines(el, series, partialIdx) {
   const tip = el.querySelector(".tip"), svg = el.querySelector("svg"), xh = svg.querySelector(".xh");
   el.querySelectorAll(".hit").forEach(r => {
     const show = () => { const i = +r.dataset.i;
-      tip.innerHTML = "<b>" + WD_FULL[i] + "</b>" + series.map(se => "<br><span style='color:" + se.color + "'>●</span> " + esc(se.name.split(" · ")[0]) + (se.dates ? " (" + shortDate(se.dates[i]) + ")" : "") + ": " + (se.vals[i] == null ? "—" : se.vals[i].toLocaleString("ru-RU")) + (si0(se) && i === partialIdx ? " · неполный" : "")).join("");
+      tip.innerHTML = "<b>" + WD_FULL[i] + "</b>" + series.map((se, k) => "<br><span style='color:" + se.color + "'>●</span> " + esc(se.name.split(" · ")[0]) + (se.dates ? " (" + shortDate(se.dates[i]) + ")" : "") + ": " + (se.vals[i] == null ? "—" : fmt1(se.vals[i])) + (k === 0 && i === partialIdx ? " · день идёт" : "")).join("");
       const bb = svg.getBoundingClientRect(), sc = bb.width / W;
       xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.setAttribute("visibility", "visible");
-      tip.style.left = Math.max(120, Math.min(bb.width - 120, x(i) * sc)) + "px"; tip.style.top = (m.t * sc + 4) + "px"; tip.style.transform = "translate(-50%, 0)"; tip.style.whiteSpace = "nowrap"; tip.hidden = false; };
-    const si0 = se => se === series[0];
+      tip.style.left = Math.max(120, Math.min(bb.width - 120, x(i) * sc)) + "px"; tip.style.top = (m.t * sc + 4) + "px"; tip.style.transform = "translate(-50%, 0)"; tip.hidden = false; };
     r.addEventListener("mouseenter", show); r.addEventListener("click", show);
     r.addEventListener("mouseleave", () => { tip.hidden = true; xh.setAttribute("visibility", "hidden"); });
   });
 }
-$("wdTopAll").onclick = () => { wdTopMode = "all"; $("wdTopAll").setAttribute("aria-pressed", "true"); $("wdTopWeek").setAttribute("aria-pressed", "false"); renderWeekdays(); };
-$("wdTopWeek").onclick = () => { wdTopMode = "week"; $("wdTopWeek").setAttribute("aria-pressed", "true"); $("wdTopAll").setAttribute("aria-pressed", "false"); renderWeekdays(); };
 
 // ---------- Вкладки и общий рендер ----------
-const TABS = ["overview", "regions", "schools", "courses", "weekdays"];
+const TABS = ["overview", "regions", "schools", "courses", "lessons", "weekdays"];
 function readTab() { const h = (location.hash || "").replace("#", ""); return TABS.includes(h) ? h : "overview"; }
 function render() {
   tab = readTab();
-  document.querySelectorAll(".tabs a").forEach(a => a.toggleAttribute("aria-current", a.dataset.tab === tab) || (a.dataset.tab === tab && a.setAttribute("aria-current", "page")));
   document.querySelectorAll(".tabs a").forEach(a => { if (a.dataset.tab === tab) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   if (!loaded) return;
-  if (!X) { TABS.forEach(t => $("p-" + t).hidden = true); $("emptyState").hidden = false; $("coverage").textContent = "Данных пока нет"; return; }
+  if (!X) { TABS.forEach(t => $("p-" + t).hidden = true); const old = J && !J.ls; $("emptyState").hidden = old; $("coverage").textContent = old ? "Ждём обновления скрипта Google" : "Данных пока нет"; return; }
   $("emptyState").hidden = true;
   TABS.forEach(t => $("p-" + t).hidden = t !== tab);
-  const L = X.days[X.latest], F = X.days[X.first];
-  const S0 = X.days[X.trackStart];
-  $("coverage").textContent = "Учёт с " + longDate(X.trackStart) + " " + S0.firstAt + " по " + longDate(X.latest) + " " + L.lastAt + " (мск)";
+  const L = X.days[X.latest];
+  $("coverage").textContent = "Учёт с " + longDate(X.first) + " по " + longDate(X.latest) + " " + L.lastAt + " (мск)";
   $("updData").textContent = "Данные в таблице обновлены " + longDate(X.latest) + " в " + L.lastAt + " мск";
-  ({ overview: renderOverview, regions: renderRegions, schools: renderSchools, courses: renderCourses, weekdays: renderWeekdays })[tab]();
+  ({ overview: renderOverview, regions: renderRegions, schools: renderSchools, courses: renderCourses, lessons: renderLessons, weekdays: renderWeekdays })[tab]();
 }
 window.addEventListener("hashchange", () => { render(); window.scrollTo(0, 0); });
-let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(render, 150); });
-$("modeDaily").onclick = () => { mode = "daily"; $("modeDaily").setAttribute("aria-pressed","true"); $("modeCum").setAttribute("aria-pressed","false"); render(); };
-$("modeCum").onclick = () => { mode = "cum"; $("modeCum").setAttribute("aria-pressed","true"); $("modeDaily").setAttribute("aria-pressed","false"); render(); };
+let rz, lastW = window.innerWidth; window.addEventListener("resize", () => { if (window.innerWidth === lastW) return; lastW = window.innerWidth; clearTimeout(rz); rz = setTimeout(render, 150); });
 
 // ---------- Загрузка данных ----------
 function status(msg, kind) { const s = $("status"); s.className = "notice " + (kind || ""); s.innerHTML = msg; s.hidden = !msg; }
 let busy = false;
-const LS_KEY = "cok-views-data", LS_CAT = "cok-views-catalog";
+const LS_KEY = "cok-views-data-v3", LS_CAT = "cok-views-catalog";
 function apply(j) {
-  J = j; X = derive(); loaded = true;
+  J = j; X = j.ls ? derive() : null; loaded = true;
   $("updAdmin").textContent = j.latestFile ? "Таблица обновлена администратором " + new Date(j.latestFile.updated).toLocaleString("ru-RU", { timeZone: "Europe/Moscow", day: "numeric", month: "long" }) + " в " + new Date(j.latestFile.updated).toLocaleTimeString("ru-RU", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit" }) + " мск" : "";
   render();
 }
-// Сначала показываем то, что этот браузер видел в прошлый раз, а свежие цифры подтягиваем следом
-try { const c = localStorage.getItem(LS_CAT); if (c) C = JSON.parse(c); } catch (_) {}
+try { const c = localStorage.getItem(LS_CAT); if (c) C = Object.assign({ courses: {}, lessons: {} }, JSON.parse(c)); } catch (_) {}
 try { const c = localStorage.getItem(LS_KEY); if (c) apply(JSON.parse(c)); } catch (_) {}
 render();
 async function loadCatalog() {
-  try { const r = await fetch("catalog.json?t=" + Date.now(), { cache: "no-store" }); if (!r.ok) return; const t = await r.text(); C = JSON.parse(t); C.courses = C.courses || {}; C.lessons = C.lessons || {}; try { localStorage.setItem(LS_CAT, t); } catch (_) {} if (loaded) render(); } catch (_) {}
+  try { const r = await fetch("catalog.json?t=" + Date.now(), { cache: "no-store" }); if (!r.ok) return; const t = await r.text(); C = Object.assign({ courses: {}, lessons: {} }, JSON.parse(t)); try { localStorage.setItem(LS_CAT, t); } catch (_) {} if (loaded && J && J.ls) { X = derive(); render(); } } catch (_) {}
 }
 async function load() {
   if (busy) return; busy = true;
   try {
-    // Основной источник — data.json рядом с сайтом (его раз в 5 минут обновляет скрипт Google).
     let res = await fetch("data.json?t=" + Date.now(), { cache: "no-store" }).catch(() => null);
     if (!res || !res.ok) { res = await fetch(API_URL, { cache: "no-store" }); if (!res.ok) throw new Error("скрипт ответил с ошибкой " + res.status); }
     const text = await res.text(), j = JSON.parse(text);
     if (j.error) throw new Error(j.error);
     const notes = [];
-    if (!j.totals) notes.push("Страницы «Школы» и «Курсы» заполнятся после обновления скрипта Google.");
+    if (!j.ls) notes.push("Сайт обновлён, а скрипт Google ещё старой версии: замените код скрипта и запустите refresh, тогда страницы заполнятся.");
     if (j.pending) notes.push("Ещё " + j.pending + " " + plural(j.pending, "новый файл ждёт", "новых файла ждут", "новых файлов ждут") + " обработки, цифры обновятся в течение нескольких минут.");
     if (j.errors && j.errors.length) notes.push("Не удалось прочитать: " + j.errors.map(e => "«" + esc(e.file) + "» (" + esc(e.message) + ")").join("; ") + ".");
     status(notes.join(" "), "");
     apply(j);
-    try { localStorage.setItem(LS_KEY, text); } catch (_) {}
+    try { if (j.ls) localStorage.setItem(LS_KEY, text); } catch (_) {}
   } catch (e) {
     if (!loaded) { status("Не удалось получить данные: " + esc((e && e.message) || e) + ". Проверьте интернет и обновите страницу.", "err"); $("coverage").textContent = "Нет данных"; }
   } finally { busy = false; }
