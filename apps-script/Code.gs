@@ -17,7 +17,7 @@ const FOLDER_ID = 'ВСТАВЬТЕ_СЮДА_ID_ПАПКИ';
 const STATE_FILE_NAME = '_dashboard_state.json'; // служебный файл, не удаляйте и не переименовывайте
 const TZ_OFFSET_HOURS = 3;                         // Metabase отдаёт время в UTC, переводим в Москву
 const REFRESH_MINUTES = 5;                         // как часто скрипт сам проверяет папку (после запуска setup)
-const STATE_VERSION = 4;                           // формат служебного файла
+const STATE_VERSION = 5;                           // формат служебного файла
 const START_DATE = '2026-10-06';                   // учитываем данные только с этой даты (мск)
 // Уроки, убранные из каталога «Моей школы» при чистке (октябрь 2026): их просмотры не оплачиваются
 // и в статистику не попадают. Номера уроков у Фоксфорда (lessonProviderId).
@@ -243,10 +243,18 @@ function saveState_(folder, file, state) {
 
 // ---------- Склейка дней ----------
 /** Для каждого дня оставляем версию с большим числом просмотров: за день просмотров со временем только прибавляется. */
+/**
+ * Склейка дней из разных выгрузок. Выгрузки из Metabase содержат всю историю, а строки в них
+ * могут уточняться (например, у строки позже появляется регион), поэтому день берётся
+ * из самой свежей выгрузки. Исключение — первый день выгрузки, который мог начаться
+ * не с полуночи: его берём, только если в нём больше строк, чем уже есть.
+ */
 function mergeDays_(store, incoming) {
   Object.keys(incoming).forEach(function (k) {
     const nd = incoming[k], od = store[k];
-    if (!od || nd.total > od.total || (nd.total === od.total && od.partialStart && !nd.partialStart)) store[k] = nd;
+    if (!od) { store[k] = nd; return; }
+    if (nd.partialStart) { if (nd.total > od.total) store[k] = nd; return; }
+    if ((nd.src || 0) >= (od.src || 0)) store[k] = nd;
   });
 }
 
@@ -282,11 +290,12 @@ function aggregate_(rows) {
   if (cT < 0 || cR < 0) throw new Error('Нет колонок created_at и region — выгрузите тот же вопрос из Metabase без изменения колонок');
   const days = {}, schoolInfo = {}, lessonCourse = {};
   const str = function (v) { return v == null ? '' : String(v).trim().replace(/\.0+$/, ''); };
-  let minKey = null, bad = 0;
+  let minKey = null, bad = 0, maxMs = 0;
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
     const t = toMsk_(r[cT]);
     if (!t) { bad++; continue; }
+    if (t.getTime() > maxMs) maxMs = t.getTime();
     if (cL >= 0 && EXCLUDED_LESSONS.has(str(r[cL]))) continue; // урок убран из каталога МШ
     const k = t.toISOString().slice(0, 10);
     const hm = pad_(t.getUTCHours()) + ':' + pad_(t.getUTCMinutes());
@@ -312,6 +321,7 @@ function aggregate_(rows) {
     if (!minKey || k < minKey) minKey = k;
   }
   if (minKey) days[minKey].partialStart = true; // первый день файла мог начаться не с полуночи
+  Object.keys(days).forEach(function (k) { days[k].src = maxMs; }); // момент выгрузки: чем больше, тем свежее
   return { days: days, schoolInfo: schoolInfo, lessonCourse: lessonCourse, bad: bad };
 }
 
