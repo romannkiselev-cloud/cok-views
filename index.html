@@ -525,7 +525,7 @@ function deltaPill(now, prev, ok, what) {
 
 /** Столбики по дням (детали региона). */
 function drawBars(el, pts) {
-  const W = Math.max(300, Math.round(el.clientWidth || 640)), H = 210, m = { t: 14, r: 8, b: 24, l: 44 };
+  const W = Math.max(300, Math.round(el.clientWidth || 640)), H = 224, m = { t: 14, r: 8, b: 38, l: 44 };
   const iw = W - m.l - m.r, ih = H - m.t - m.b;
   const sc0 = niceScale(Math.max(0, ...pts.map(p => p.v || 0))), maxV = sc0.max;
   const y = v => m.t + ih - (v / maxV) * ih;
@@ -538,7 +538,9 @@ function drawBars(el, pts) {
     s += "<rect x='" + (cx - step / 2) + "' y='" + m.t + "' width='" + step + "' height='" + ih + "' fill='var(--h" + t + ")' opacity='0.6'><title>" + hs.map(h => h.name).join(", ") + "</title></rect>"; });
   pts.forEach((p, i) => { const cx = m.l + step * i + step / 2;
     if (p.v > 0) { const top = y(p.v); s += "<rect x='" + (cx - bw/2) + "' y='" + top + "' width='" + bw + "' height='" + (m.t + ih - top) + "' rx='2' fill='" + (p.partial ? "var(--accent-soft)" : "var(--accent)") + "'><title>" + longDate(p.k) + ", " + wd(p.k) + ": " + fmt(p.v) + "</title></rect>"; }
-    if ((pts.length - 1 - i) % every === 0) s += "<text x='" + cx + "' y='" + (H - 6) + "' text-anchor='middle' style='fill:var(--ink)'>" + shortDate(p.k) + "</text>"; });
+    if ((pts.length - 1 - i) % every === 0) { const we = dow(p.k) >= 5;
+      s += "<text x='" + cx + "' y='" + (H - 20) + "' text-anchor='middle' style='fill:var(--ink)'>" + shortDate(p.k) + "</text>";
+      s += "<text x='" + cx + "' y='" + (H - 6) + "' text-anchor='middle' style='fill:" + (we ? "var(--bad)" : "var(--muted)") + "'>" + WD_SHORT[dow(p.k)].toLowerCase() + "</text>"; } });
   s += "<line x1='" + m.l + "' x2='" + (W - m.r) + "' y1='" + (m.t + ih) + "' y2='" + (m.t + ih) + "' style='stroke:var(--faint)'/></svg>";
   el.innerHTML = s;
 }
