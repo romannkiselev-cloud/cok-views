@@ -113,6 +113,15 @@ details.panel[open] summary { margin-bottom: 12px; }
 .scroll { overflow-x: auto; }
 .notes { font-size: 13px; color: var(--muted); display: grid; gap: 6px; max-width: 80ch; }
 .notes p { margin: 0; }
+.lockbox { max-width: 420px; margin: 24px auto; text-align: center; display: grid; gap: 12px; padding: 28px 24px; }
+.lockbox h2 { font-size: 17px; margin: 0; }
+.lockbox p { margin: 0; color: var(--muted); font-size: 14px; }
+.lockbox form { display: flex; gap: 8px; flex-wrap: wrap; }
+.lockbox input { flex: 1 1 200px; font: inherit; font-size: 15px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-width: 0; }
+.lockbox .err { color: var(--bad); font-size: 14px; }
+.kpi.bill-total { background: var(--accent-wash); border-color: var(--accent-soft); }
+.rules { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; }
+.rules li::marker { color: var(--faint); }
 .empty { text-align: center; padding: 40px 20px; color: var(--muted); }
 .empty strong { display: block; color: var(--ink); font-size: 17px; margin-bottom: 6px; }
 @media (prefers-reduced-motion: no-preference) { .rank .bar span { transition: width .4s ease; } }
@@ -199,6 +208,7 @@ td.peak b { font-weight: 600; }
     <a href="#courses" data-tab="courses">Курсы</a>
     <a href="#lessons" data-tab="lessons">Уроки</a>
     <a href="#weekdays" data-tab="weekdays">Дни недели</a>
+    <a href="#billing" data-tab="billing">Биллинг</a>
   </nav>
 
   <div id="status" aria-live="polite" hidden></div>
@@ -362,6 +372,38 @@ td.peak b { font-weight: 600; }
       </div>
       <div class="scroll" id="wdTop"></div>
     </section>
+  </section>
+
+  <!-- ===== Биллинг (закрыт паролем; цифры приходят от скрипта Google только после проверки пароля) ===== -->
+  <section class="page" id="p-billing" hidden>
+    <section class="panel lockbox" id="billLock">
+      <h2>Вкладка закрыта паролем</h2>
+      <p>Цифры биллинга не хранятся на сайте: скрипт отдаёт их только после проверки пароля.</p>
+      <form id="billForm" autocomplete="on">
+        <input type="password" id="billPass" name="password" autocomplete="current-password" placeholder="Пароль" aria-label="Пароль" required>
+        <button class="btn" type="submit" id="billBtn">Открыть</button>
+      </form>
+      <div class="err" id="billErr" role="alert" hidden></div>
+    </section>
+    <div id="billBody" hidden>
+      <div class="panel-head" style="margin-bottom:12px">
+        <div>
+          <h2 style="font-size:17px" id="billTitle">Потенциальный заработок</h2>
+          <p class="sub" id="billCap" style="margin-top:2px"></p>
+        </div>
+        <div class="seg" role="group" aria-label="Месяц" id="billMonths"></div>
+      </div>
+      <div class="grid3">
+        <section class="panel kpi"><div class="label">1–6 классы</div><div class="value" id="bLow">—</div><div class="meta" id="bLowMeta"></div></section>
+        <section class="panel kpi"><div class="label">7–11 классы</div><div class="value" id="bHigh">—</div><div class="meta" id="bHighMeta"></div></section>
+        <section class="panel kpi bill-total"><div class="label" id="bTotalLabel">Итого</div><div class="value" id="bTotal">—</div><div class="meta" id="bTotalMeta"></div></section>
+      </div>
+      <section class="panel" style="margin-top:20px">
+        <h2>Какие уроки попадают в расчёт</h2>
+        <p class="cap">Это прогноз по выгрузке Metabase, а не начисление: окончательно засчитывает «Моя школа» по своим данным.</p>
+        <ul class="rules" id="billRules"></ul>
+      </section>
+    </div>
   </section>
 </div>
 
@@ -911,8 +953,62 @@ function drawLines(el, series, partialIdx) {
   });
 }
 
+// ---------- Биллинг ----------
+// Пароль живёт только в памяти страницы: после перезагрузки его нужно ввести снова.
+const bill = { pass: null, data: null, at: 0, busy: false, err: "", month: null };
+const rub = n => Math.round(n).toLocaleString("ru-RU") + " ₽";
+const lessonsWord = n => n.toLocaleString("ru-RU") + " " + plural(n, "урок", "урока", "уроков");
+async function fetchBilling(pass) {
+  if (bill.busy) return; bill.busy = true; bill.err = ""; if (tab === "billing") renderBilling();
+  try {
+    const res = await fetch(API_URL, { method: "POST", body: JSON.stringify({ password: pass }), cache: "no-store" });
+    if (!res.ok) throw new Error("скрипт ответил с ошибкой " + res.status);
+    const j = await res.json();
+    if (j.error) { if (j.denied || j.locked) { bill.pass = null; bill.data = null; } bill.err = j.error; return; }
+    bill.pass = pass; bill.data = j; bill.at = Date.now();
+    $("billPass").value = "";
+    if (!bill.month || !j.months.some(m => m.month === bill.month)) bill.month = j.months.length ? j.months[j.months.length - 1].month : null;
+  } catch (e) {
+    bill.err = "Не удалось получить данные: " + ((e && e.message) || e) + ".";
+  } finally { bill.busy = false; if (tab === "billing") renderBilling(); }
+}
+function renderBilling() {
+  const D = bill.data;
+  $("billLock").hidden = !!D; $("billBody").hidden = !D;
+  $("billErr").textContent = bill.err; $("billErr").hidden = !bill.err;
+  $("billBtn").disabled = bill.busy; $("billBtn").textContent = bill.busy ? "Проверяю…" : "Открыть";
+  if (!D) { if (!bill.busy) setTimeout(() => { const i = $("billPass"); if (i && tab === "billing") i.focus(); }, 0); return; }
+  if (Date.now() - bill.at > 5 * 60 * 1000 && bill.pass) fetchBilling(bill.pass); // тихо обновляем раз в 5 минут
+  const M = D.months.find(m => m.month === bill.month);
+  const segs = D.months.length > 1 ? D.months.map(m => "<button type='button' data-m='" + m.month + "' aria-pressed='" + (m.month === bill.month) + "'>" + MONTHS_N[+m.month.slice(5) - 1] + "</button>").join("") : "";
+  $("billMonths").innerHTML = segs; $("billMonths").hidden = !segs;
+  if (!M) { $("billCap").textContent = "Данных пока нет."; return; }
+  const mName = MONTHS_N[+M.month.slice(5) - 1].toLowerCase();
+  const P = D.prices, nL = M.lessons["1-6"], nH = M.lessons["7-11"];
+  const last = D.latest && D.latest.date >= M.from && D.latest.date <= M.to ? D.latest : null;
+  $("billTitle").textContent = "Потенциальный заработок за " + mName;
+  $("billCap").textContent = "Учёт с " + longDate(M.from) + " по " + longDate(last ? last.date : M.to) + (last ? " " + last.lastAt : "") + " (мск)";
+  $("bLow").textContent = rub(nL * P["1-6"]); $("bLowMeta").textContent = lessonsWord(nL) + " × " + P["1-6"] + " ₽";
+  $("bHigh").textContent = rub(nH * P["7-11"]); $("bHighMeta").textContent = lessonsWord(nH) + " × " + P["7-11"] + " ₽";
+  $("bTotalLabel").textContent = "Итого за " + mName;
+  $("bTotal").textContent = rub(nL * P["1-6"] + nH * P["7-11"]); $("bTotalMeta").textContent = lessonsWord(nL + nH);
+  const R = D.rules, sh = Math.round(R.minShare * 100);
+  const items = [
+    "Ученик провёл на уроке не меньше " + sh + "% нормы и не больше самой нормы: 1–4 классы — от " + fmtMin(R.norms["1-4"] * R.minShare) + " до " + R.norms["1-4"] + " минут, 5–11 классы — от " + fmtMin(R.norms["5-11"] * R.minShare) + " до " + R.norms["5-11"] + " минут.",
+    "Получил за урок больше " + R.minPoints + " баллов.",
+    "Время на уроке — от начала урока до последнего действия ученика (timeStart → timeEnd): чистого времени на уроке в выгрузке нет.",
+    "Цена: 1–6 классы — " + P["1-6"] + " ₽ за урок, 7–11 классы — " + P["7-11"] + " ₽. Класс берётся из курса.",
+    "Не учитываются просмотры учителей и уроки, убранные из каталога «Моей школы». Повторные прохождения одного урока одним учеником не убираются: номера ученика в выгрузке нет."
+  ];
+  if (M.daysWithoutData) items.push("За " + M.daysWithoutData + " " + plural(M.daysWithoutData, "день", "дня", "дней") + " нет времени и баллов в выгрузке — эти дни не посчитаны.");
+  $("billRules").innerHTML = items.map(t => "<li>" + esc(t) + "</li>").join("");
+}
+const fmtMin = v => (Math.round(v * 10) / 10).toLocaleString("ru-RU");
+$("billForm").addEventListener("submit", e => { e.preventDefault(); const v = $("billPass").value; if (v) fetchBilling(v); });
+$("billMonths").addEventListener("click", e => { const b = e.target.closest("button[data-m]"); if (!b) return; bill.month = b.dataset.m; renderBilling(); });
+
 // ---------- Вкладки и общий рендер ----------
-const TABS = ["overview", "regions", "schools", "courses", "lessons", "weekdays"];
+const TABS = ["overview", "regions", "schools", "courses", "lessons", "weekdays", "billing"];
 function readTab() { const h = (location.hash || "").replace("#", ""); return TABS.includes(h) ? h : "overview"; }
 function render() {
   tab = readTab();
@@ -924,7 +1020,7 @@ function render() {
   const L = X.days[X.latest];
   $("coverage").textContent = "Учёт с " + longDate(X.first) + " по " + longDate(X.latest) + " " + L.lastAt + " (мск)";
   $("updData").textContent = "Данные в таблице обновлены " + longDate(X.latest) + " в " + L.lastAt + " мск";
-  ({ overview: renderOverview, regions: renderRegions, schools: renderSchools, courses: renderCourses, lessons: renderLessons, weekdays: renderWeekdays })[tab]();
+  ({ overview: renderOverview, regions: renderRegions, schools: renderSchools, courses: renderCourses, lessons: renderLessons, weekdays: renderWeekdays, billing: renderBilling })[tab]();
 }
 window.addEventListener("hashchange", () => { render(); window.scrollTo(0, 0); });
 let rz, lastW = window.innerWidth; window.addEventListener("resize", () => { if (window.innerWidth === lastW) return; lastW = window.innerWidth; clearTimeout(rz); rz = setTimeout(render, 150); });

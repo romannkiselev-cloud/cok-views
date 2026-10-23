@@ -17,7 +17,7 @@ const FOLDER_ID = 'ВСТАВЬТЕ_СЮДА_ID_ПАПКИ';
 const STATE_FILE_NAME = '_dashboard_state.json'; // служебный файл, не удаляйте и не переименовывайте
 const TZ_OFFSET_HOURS = 3;                         // Metabase отдаёт время в UTC, переводим в Москву
 const REFRESH_MINUTES = 5;                         // как часто скрипт сам проверяет папку (после запуска setup)
-const STATE_VERSION = 5;                           // формат служебного файла
+const STATE_VERSION = 6;                           // формат служебного файла (6 — с биллингом)
 const START_DATE = '2026-10-06';                   // учитываем данные только с этой даты (мск)
 // Уроки, убранные из каталога «Моей школы» при чистке (октябрь 2026): их просмотры не оплачиваются
 // и в статистику не попадают. Номера уроков у Фоксфорда (lessonProviderId).
@@ -28,7 +28,30 @@ const EXCLUDED_LESSONS = new Set([
   '443300', '442267', '442398', '443057', '443061', '443082', '443084', '443213', '443224', '443235',
   '443312', '443316', '443368', '443392', '443402', '443413', '443421'
 ]);
-const SLOT_DAYS = 15;                              // за сколько последних дней сайт получает разбивку по 15 минутам
+// С 23.10.2026 Metabase отдаёт выгрузку в новом формате (есть колонки timeStart, timeEnd, vua.total_points),
+// и время в ней на 3 часа раньше прежнего: до Москвы нужно прибавить 6 часов, а не 3.
+const TZ_OFFSET_HOURS_NEW = 6;
+
+// ---------- Биллинг (вкладка закрыта паролем, в data.json эти цифры не попадают) ----------
+// Пароль задаётся в «Настройки проекта» → «Свойства скрипта» под именем BILLING_PASSWORD.
+// Урок ученика попадает в биллинг, если время на уроке (от timeStart до timeEnd) не меньше 30% нормы
+// и не больше самой нормы, а баллов за урок больше 30. Норма: 1–4 классы — 20 минут, 5–11 классы — 30 минут.
+const BILL_MIN_SHARE = 0.3;
+const BILL_MIN_POINTS = 30;                        // нужно строго больше
+const BILL_NORM_MIN = function (grade) { return grade <= 4 ? 20 : 30; };
+const BILL_BAND = function (grade) { return grade <= 6 ? '1-6' : '7-11'; };
+const BILL_PRICES = { '1-6': 105, '7-11': 300 };   // рублей за урок
+const BILL_MAX_FAILS = 10;                         // после стольких неверных паролей вход закрывается на 15 минут
+// Класс курса (courseProviderId → класс)
+const COURSE_GRADES = {
+  '11215': 11, '11217': 11, '11218': 11, '11253': 9, '11254': 8, '11255': 1, '11257': 2, '11258': 3, '11260': 4,
+  '11264': 5, '11265': 6, '11266': 7, '11268': 8, '11271': 9, '14678': 1, '14679': 2, '14680': 3, '14681': 4,
+  '14682': 1, '14683': 2, '14684': 3, '14685': 4, '14690': 5, '14691': 6, '14692': 7, '14693': 8, '14694': 9,
+  '14700': 5, '14701': 6, '14702': 7, '14703': 8, '14704': 9, '14705': 7, '14706': 8, '14707': 9, '14710': 7,
+  '14713': 5, '14714': 6, '14715': 7, '14717': 9, '14719': 8
+};
+
+const SLOT_DAYS = 15;                             // за сколько последних дней сайт получает разбивку по 15 минутам
 const CHUNK = 40000;                               // ответ хранится в кэше кусками (лимит Google — 100 КБ на кусок)
 
 // Куда класть готовые цифры для сайта. Ключ доступа GitHub хранится не здесь, а в
@@ -225,6 +248,12 @@ function loadState_(folder) {
       const s = JSON.parse(file.getBlob().getDataAsString('UTF-8'));
       // Состояние старого формата (без школ и курсов) пересобираем заново из всех файлов папки
       if (s && s.days && s.processed && s.version === STATE_VERSION) return { file: file, state: s };
+      // Переход 5 → 6: дни оставляем (сайт продолжает показывать цифры), а файлы перечитываем,
+      // чтобы посчитать биллинг и учесть новый сдвиг времени
+      if (s && s.days && s.processed && s.version === 5) {
+        s.version = STATE_VERSION; s.processed = {};
+        return { file: file, state: s };
+      }
     } catch (_) { /* повреждён — соберём заново */ }
     return { file: file, state: emptyState_() };
   }
@@ -262,18 +291,18 @@ function mergeDays_(store, incoming) {
 function normKey_(s) { return String(s).toLowerCase().replace(/[^a-zа-я0-9]/g, ''); }
 function pad_(n) { return (n < 10 ? '0' : '') + n; }
 
-function toMsk_(v) {
+function toMsk_(v, offH) {
   let ms = null;
   if (typeof v === 'number') ms = Math.round((v - 25569) * 86400000);
   else if (v instanceof Date) ms = v.getTime();
   else if (typeof v === 'string' && v.trim()) {
     let s = v.trim();
     if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(s)) { s = s.replace(' ', 'T'); if (!/(Z|[+-]\d{2}:?\d{2})$/.test(s)) s += 'Z'; }
-    else if (/^\d+(\.\d+)?$/.test(s)) return toMsk_(parseFloat(s));
+    else if (/^\d+(\.\d+)?$/.test(s)) return toMsk_(parseFloat(s), offH);
     ms = Date.parse(s);
   }
   if (ms === null || isNaN(ms)) return null;
-  return new Date(ms + TZ_OFFSET_HOURS * 3600000); // читаем через getUTC* — это московское время
+  return new Date(ms + (offH == null ? TZ_OFFSET_HOURS : offH) * 3600000); // читаем через getUTC* — это московское время
 }
 
 /** rows: массив массивов, первая строка — заголовки. */
@@ -287,13 +316,17 @@ function aggregate_(rows) {
   const cSid = head.indexOf('schoolid');
   const cC = find('courseproviderid', ['course']);
   const cL = find('lessonproviderid', ['lesson']);
+  // новый формат выгрузки (с 23.10.2026): есть время урока и баллы, а время сдвинуто на 3 часа раньше
+  const cTS = head.indexOf('timestart'), cTE = head.indexOf('timeend'), cP = find('vuatotalpoints', ['points']);
+  const isNew = cTS >= 0 && cTE >= 0 && cP >= 0;
+  const off = isNew ? TZ_OFFSET_HOURS_NEW : TZ_OFFSET_HOURS;
   if (cT < 0 || cR < 0) throw new Error('Нет колонок created_at и region — выгрузите тот же вопрос из Metabase без изменения колонок');
   const days = {}, schoolInfo = {}, lessonCourse = {};
   const str = function (v) { return v == null ? '' : String(v).trim().replace(/\.0+$/, ''); };
   let minKey = null, bad = 0, maxMs = 0;
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
-    const t = toMsk_(r[cT]);
+    const t = toMsk_(r[cT], off);
     if (!t) { bad++; continue; }
     if (t.getTime() > maxMs) maxMs = t.getTime();
     if (cL >= 0 && EXCLUDED_LESSONS.has(str(r[cL]))) continue; // урок убран из каталога МШ
@@ -301,7 +334,11 @@ function aggregate_(rows) {
     const hm = pad_(t.getUTCHours()) + ':' + pad_(t.getUTCMinutes());
     const rc = parseInt(r[cR], 10), code = isNaN(rc) ? '0' : String(rc);
     let d = days[k];
-    if (!d) { d = days[k] = { date: k, total: 0, students: 0, teachers: 0, firstAt: hm, lastAt: hm, partialStart: false, regions: {}, ls: {}, slots: [] }; for (let s = 0; s < 96; s++) d.slots.push(0); }
+    if (!d) {
+      d = days[k] = { date: k, total: 0, students: 0, teachers: 0, firstAt: hm, lastAt: hm, partialStart: false, regions: {}, ls: {}, slots: [] };
+      for (let s = 0; s < 96; s++) d.slots.push(0);
+      if (isNew) d.bill = { '1-6': 0, '7-11': 0, unknown: 0 }; // уроки, попавшие в биллинг
+    }
     d.total++;
     if (hm < d.firstAt) d.firstAt = hm;
     if (hm > d.lastAt) d.lastAt = hm;
@@ -316,6 +353,7 @@ function aggregate_(rows) {
     const cid = cC >= 0 ? str(r[cC]) : '', lid = cL >= 0 ? str(r[cL]) : '';
     if (lid && cid) lessonCourse[lid] = cid;
     // Одна связка «урок | школа» даёт всё остальное: курс (через урок) и регион (через школу)
+    if (isNew) billRow_(d, r, cid, cTS, cTE, cP);
     const pk = (lid || '?') + '|' + (sid || '?');
     d.ls[pk] = (d.ls[pk] || 0) + 1;
     if (!minKey || k < minKey) minKey = k;
@@ -323,6 +361,62 @@ function aggregate_(rows) {
   if (minKey) days[minKey].partialStart = true; // первый день файла мог начаться не с полуночи
   Object.keys(days).forEach(function (k) { days[k].src = maxMs; }); // момент выгрузки: чем больше, тем свежее
   return { days: days, schoolInfo: schoolInfo, lessonCourse: lessonCourse, bad: bad };
+}
+
+/** Засчитывает просмотр ученика в биллинг дня, если он проходит условия. */
+function billRow_(d, r, cid, cTS, cTE, cP) {
+  const grade = COURSE_GRADES[cid];
+  if (!grade) { d.bill.unknown++; return; }
+  const a = toMsk_(r[cTS], 0), b = toMsk_(r[cTE], 0);
+  if (!a || !b) return;                                   // урок не начинали
+  const minutes = (b.getTime() - a.getTime()) / 60000, norm = BILL_NORM_MIN(grade);
+  if (minutes < BILL_MIN_SHARE * norm || minutes > norm) return;
+  const pts = parseFloat(String(r[cP] == null ? '' : r[cP]).replace(',', '.'));
+  if (!(pts > BILL_MIN_POINTS)) return;
+  d.bill[BILL_BAND(grade)]++;
+}
+
+/** Ответ вкладке «Биллинг»: число засчитанных уроков по месяцам и группам классов. */
+function billingView_(state) {
+  const keys = Object.keys(state.days || {}).filter(function (k) { return k >= START_DATE; }).sort();
+  const months = {};
+  let latest = null, noData = 0;
+  keys.forEach(function (k) {
+    const d = state.days[k], m = k.slice(0, 7);
+    const mo = months[m] || (months[m] = { month: m, from: k, to: k, lessons: { '1-6': 0, '7-11': 0 }, unknown: 0, daysWithoutData: 0 });
+    mo.to = k;
+    if (!d.bill) { mo.daysWithoutData++; noData++; return; }
+    mo.lessons['1-6'] += d.bill['1-6'] || 0; mo.lessons['7-11'] += d.bill['7-11'] || 0; mo.unknown += d.bill.unknown || 0;
+    latest = { date: k, lastAt: d.lastAt };
+  });
+  return { version: 1, generatedAt: new Date().toISOString(), updatedAt: state.updatedAt || null, latest: latest,
+    prices: BILL_PRICES, rules: { minShare: BILL_MIN_SHARE, minPoints: BILL_MIN_POINTS, norms: { '1-4': BILL_NORM_MIN(1), '5-11': BILL_NORM_MIN(5) } },
+    months: Object.keys(months).sort().map(function (m) { return months[m]; }), daysWithoutData: noData };
+}
+
+/**
+ * Вкладка «Биллинг» обращается сюда POST-запросом с паролем. Пароль сверяется со свойством
+ * скрипта BILLING_PASSWORD; после BILL_MAX_FAILS неверных попыток вход закрывается на 15 минут.
+ */
+function doPost(e) {
+  let body = {};
+  try { body = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (_) { body = {}; }
+  const cache = CacheService.getScriptCache();
+  const fails = parseInt(cache.get('bill_fails') || '0', 10);
+  if (fails >= BILL_MAX_FAILS) return json_(JSON.stringify({ error: 'Слишком много неверных попыток. Попробуйте через 15 минут.', locked: true }));
+  const pass = PropertiesService.getScriptProperties().getProperty('BILLING_PASSWORD');
+  if (!pass) return json_(JSON.stringify({ error: 'Пароль для биллинга ещё не задан в свойствах скрипта.' }));
+  if (String(body.password || '') !== pass) {
+    cache.put('bill_fails', String(fails + 1), 900);
+    Utilities.sleep(800);
+    return json_(JSON.stringify({ error: 'Неверный пароль.', denied: true }));
+  }
+  try {
+    const st = loadState_(DriveApp.getFolderById(FOLDER_ID));
+    return json_(JSON.stringify(billingView_(st.state)));
+  } catch (err) {
+    return json_(JSON.stringify({ error: String((err && err.message) || err) }));
+  }
 }
 
 // ---------- Чтение файлов ----------
