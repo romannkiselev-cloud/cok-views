@@ -119,6 +119,7 @@ details.panel[open] summary { margin-bottom: 12px; }
 .lockbox form { display: flex; gap: 8px; flex-wrap: wrap; }
 .lockbox input { flex: 1 1 200px; font: inherit; font-size: 15px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-width: 0; }
 .lockbox .err { color: var(--bad); font-size: 14px; }
+.kpi.bill .value { font-size: clamp(24px, 2.5vw, 34px); white-space: nowrap; letter-spacing: -0.01em; }
 .kpi.bill-total { background: var(--accent-wash); border-color: var(--accent-soft); }
 .rules { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; }
 .rules li::marker { color: var(--faint); }
@@ -415,9 +416,9 @@ td.peak b { font-weight: 600; }
         <p class="sub" id="billCap" style="margin-top:2px"></p>
       </div>
       <div class="grid3">
-        <section class="panel kpi"><div class="label">1–6 классы</div><div class="value" id="bLow">—</div><div class="meta" id="bLowMeta"></div></section>
-        <section class="panel kpi"><div class="label">7–11 классы</div><div class="value" id="bHigh">—</div><div class="meta" id="bHighMeta"></div></section>
-        <section class="panel kpi bill-total"><div class="label" id="bTotalLabel">Итого</div><div class="value" id="bTotal">—</div><div class="meta" id="bTotalMeta"></div></section>
+        <section class="panel kpi bill"><div class="label">1–6 классы</div><div class="value" id="bLow">—</div><div class="meta" id="bLowMeta"></div></section>
+        <section class="panel kpi bill"><div class="label">7–11 классы</div><div class="value" id="bHigh">—</div><div class="meta" id="bHighMeta"></div></section>
+        <section class="panel kpi bill bill-total"><div class="label" id="bTotalLabel">Итого</div><div class="value" id="bTotal">—</div><div class="meta" id="bTotalMeta"></div></section>
       </div>
       <section class="panel" style="margin-top:20px">
         <h2>Какие уроки попадают в расчёт</h2>
@@ -1003,7 +1004,7 @@ function drawLines(el, series, partialIdx) {
 // ---------- Биллинг ----------
 // Пароль живёт только в памяти страницы: после перезагрузки его нужно ввести снова.
 const bill = { pass: null, data: null, at: 0, busy: false, err: "", month: null };
-const rub = n => Math.round(n).toLocaleString("ru-RU") + " ₽";
+const rub = n => Math.round(n).toLocaleString("ru-RU") + "\u00a0₽"; // неразрывный пробел: знак рубля не уезжает на новую строку
 const lessonsWord = n => n.toLocaleString("ru-RU") + " " + plural(n, "урок", "урока", "уроков");
 async function fetchBilling(pass) {
   if (bill.busy) return; bill.busy = true; bill.err = ""; if (tab === "billing") renderBilling();
