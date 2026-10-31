@@ -86,6 +86,18 @@ h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(22px, 
 .chart svg { width: 100%; height: auto; display: block; overflow: visible; }
 .chart text { fill: var(--muted); font-family: var(--font-body); font-size: 12px; }
 .chart .grid line { stroke: var(--line); }
+.with-info { display: flex; align-items: center; gap: 8px; margin-bottom: 14px !important; }
+.trend { position: relative; display: inline-block; font-size: .5em; vertical-align: .35em; margin-left: 6px; cursor: help; line-height: 1; }
+.trend.up { color: var(--good); } .trend.down { color: var(--bad); } .trend.flat { color: var(--muted); }
+.trend:hover .info-pop, .trend:focus .info-pop { display: block; }
+.trend:focus { outline: none; }
+.trend .info-pop { width: max-content; max-width: min(280px, 70vw); left: auto; right: -8px; }
+.kpi .label .info { margin-left: 6px; vertical-align: 1px; }
+.info { text-transform: none; letter-spacing: 0; position: relative; display: inline-grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; border: 1px solid var(--faint); color: var(--faint); font: 600 11px/1 Georgia, serif; font-style: italic; cursor: help; flex: none; }
+.info:hover, .info:focus { color: var(--accent); border-color: var(--accent); outline: none; }
+.info-pop { display: none; position: absolute; left: -8px; top: calc(100% + 8px); z-index: 20; width: min(420px, 80vw); background: var(--ink); color: var(--bg); font: 400 13px/1.45 var(--font-body); font-style: normal; padding: 10px 12px; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+.info-pop p { margin: 0; } .info-pop p + p { margin-top: 6px; }
+.info:hover .info-pop, .info:focus .info-pop { display: block; }
 .tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 13px; padding: 7px 10px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, -100%); }
 .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 8px; }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
@@ -236,15 +248,14 @@ td.peak b { font-weight: 600; }
   <!-- ===== Общая ===== -->
   <section class="page" id="p-overview" hidden>
     <section class="panel">
-      <h2>Просмотры учеников по дням</h2>
-      <p class="cap" id="bigCap"></p>
+      <h2 class="with-info">Просмотры учеников по дням <span class="info" tabindex="0" role="button" aria-label="Пояснение к графику" aria-describedby="bigInfo">i<span class="info-pop" role="tooltip" id="bigInfo"></span></span></h2>
       <div class="mbar" id="bigNav" role="group" aria-label="Месяц на графике">
         <button type="button" class="mbtn" data-d="-1" aria-label="Предыдущий месяц">‹</button>
         <div class="mtabs" id="bigMonths"></div>
         <button type="button" class="mbtn" data-d="1" aria-label="Следующий месяц">›</button>
       </div>
       <div class="big" id="big"></div>
-      <div class="legend"><span><i style="background:var(--accent)"></i>за день</span><span><i style="background:var(--accent-soft)"></i>день ещё идёт</span><span><i style="background:var(--s1);height:3px;vertical-align:3px"></i>всего нарастающим итогом</span><span><i style="background:var(--hq-bar)"></i>каникулы у школ на четвертях</span><span><i style="background:var(--hm-bar)"></i>каникулы у школ на модулях 5+1</span></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>за день</span><span><i style="background:var(--accent-soft)"></i>день ещё идёт</span><span><i style="background:var(--s1);height:3px;vertical-align:3px"></i>всего нарастающим итогом</span><span><i style="background:var(--hq);box-shadow:inset 0 0 0 1px var(--hq-bar)"></i>четвертные каникулы</span><span><i style="background:var(--hm);box-shadow:inset 0 0 0 1px var(--hm-bar)"></i>модульные каникулы</span></div>
     </section>
 
     <div class="grid3">
@@ -254,14 +265,14 @@ td.peak b { font-weight: 600; }
         <div class="meta" id="kTotalMeta"></div>
       </section>
       <section class="panel kpi">
-        <div class="label" id="kDayLabel">Прирост за день</div>
+        <div class="label" id="kMonLabel">Всего просмотров за месяц</div>
+        <div class="value" id="kMon">—</div>
+        <div class="meta" id="kMonMeta"></div>
+      </section>
+      <section class="panel kpi">
+        <div class="label" id="kDayLabel">Всего просмотров за вчера</div>
         <div class="value" id="kDay">—</div>
         <div class="meta" id="kDayMeta"></div>
-      </section>
-      <section class="panel kpi teach">
-        <div class="label">Просмотры учителей</div>
-        <div class="value" id="kTeach">—</div>
-        <div class="meta" id="kTeachMeta"></div>
       </section>
     </div>
 
@@ -272,19 +283,6 @@ td.peak b { font-weight: 600; }
         <div class="panel-head"><h2>Топ-5 регионов по числу просмотров</h2><a href="#regions">Все регионы →</a></div>
         <p class="cap" id="topAllCap"></p>
         <ol class="rank" id="topAll"></ol>
-      </section>
-      <section class="panel">
-        <div class="panel-head"><h2>Топ-5 регионов за последние 7 дней</h2><a href="#regions">Все регионы →</a></div>
-        <p class="cap" id="topWeekCap"></p>
-        <ol class="rank" id="topWeek"></ol>
-      </section>
-    </div>
-
-    <div class="grid2">
-      <section class="panel">
-        <div class="panel-head"><h2>Топ-5 школ по числу просмотров</h2><a href="#schools">Все школы →</a></div>
-        <p class="cap" id="topSchoolsCap"></p>
-        <ol class="rank" id="topSchools"></ol>
       </section>
       <section class="panel">
         <div class="panel-head"><h2>Топ-5 курсов по числу просмотров</h2><a href="#courses">Все курсы →</a></div>
@@ -678,7 +676,7 @@ function renderBig() {
   let before = 0; for (const k of X.keys) if (k < mStart) before += X.days[k].students;
   const fitW = Math.max(0, el.clientWidth - 48 - 8);
   const step = Math.max(24, Math.min(40, Math.floor(fitW / dates.length))), bw = Math.round(step * 0.68), W = dates.length * step + 8;
-  const RIB = 34, H1 = 180, GAP = 34, H2 = 150, LBL = 48;
+  const RIB = 6, H1 = 180, GAP = 34, H2 = 150, LBL = 48;
   const T1 = RIB + 18, B1 = T1 + H1, T2 = B1 + GAP, B2 = T2 + H2, H = B2 + LBL;
   let cum = before; const pts = dates.map(k => { const d = X.days[k]; const v = k > X.latest || k < X.first ? null : (d ? d.students : 0); if (v != null) cum += v; return { k, v, cum: v == null ? null : cum }; });
   const mTotal = pts.reduce((t, p) => t + (p.v || 0), 0);
@@ -694,20 +692,17 @@ function renderBig() {
   const x = i => 4 + step * i + step / 2;
   // ось (не прокручивается)
   let a = "<svg width='48' height='" + H + "'>";
-  a += "<text x='44' y='14' text-anchor='end' style='fill:var(--hq-ink);font-size:10px'>четв.</text><text x='44' y='29' text-anchor='end' style='fill:var(--hm-ink);font-size:10px'>модули</text>";
   for (let v = 0; v <= s1.max + 1e-9; v += s1.step) a += "<text x='42' y='" + (y1(v) + 4) + "' text-anchor='end'>" + fmt(Math.round(v)) + "</text>";
   for (let v = 0; v <= s2.max + 1e-9; v += s2.step) a += "<text x='42' y='" + (y2(v) + 4) + "' text-anchor='end'>" + fmt(Math.round(v)) + "</text>";
   a += "</svg>";
   let s = "<svg width='" + W + "' height='" + H + "' role='img' aria-label='Просмотры учеников по дням до 31 декабря'>";
-  // каникулы: подсветка столбцов и ленты сверху
+  // каникулы: подсветка столбцов (что это за каникулы — в легенде и во всплывающей подсказке дня)
   const xi = k => dates.indexOf(k);
   HOLIDAYS.forEach(h => {
     const i0 = dates.findIndex(k => k >= h.from), i1 = (() => { let r = -1; dates.forEach((k, i) => { if (k <= h.to) r = i; }); return r; })();
     if (i0 < 0 || i1 < 0 || i0 > i1) return;
     const x0 = x(i0) - step / 2, w = (i1 - i0 + 1) * step, row = h.t === "q" ? 0 : 1;
     s += "<rect x='" + x0 + "' y='" + T1 + "' width='" + w + "' height='" + (B2 - T1) + "' fill='var(--h" + h.t + ")' opacity='0.5'/>";
-    s += "<rect x='" + (x0 + 1) + "' y='" + (3 + row * 15) + "' width='" + (w - 2) + "' height='12' rx='3' fill='var(--h" + h.t + "-bar)'><title>" + h.name + ": " + longDate(h.from) + " — " + longDate(h.to) + "</title></rect>";
-    if (w > 70) s += "<text x='" + (x0 + 5) + "' y='" + (12 + row * 15) + "' style='fill:var(--h" + h.t + "-ink);font-size:10px;font-weight:600'>" + (w < 120 ? (h.t === "q" ? "четверти" : "модули") : (h.t === "q" ? "каникулы · четверти" : "каникулы · модули")) + "</text>";
   });
   s += "<g class='grid'>";
   for (let v = 0; v <= s1.max + 1e-9; v += s1.step) s += "<line x1='0' x2='" + W + "' y1='" + y1(v) + "' y2='" + y1(v) + "'/>";
@@ -745,52 +740,62 @@ function renderBig() {
     r.addEventListener("mouseleave", () => { tip.hidden = true; });
   });
   plot.scrollLeft = li >= 0 ? Math.max(0, x(li) - plot.clientWidth * 0.75) : 0;
-  $("bigCap").textContent = "Выберите месяц или листайте стрелками." + (F && bigMonth <= LIVE_START.slice(0, 7) ? " Сентябрь — по отчёту «Моей школы»: пары «ученик — урок» по дате первого просмотра. Дни с " + longDate(addDays(F.to, 1)) + " по " + longDate(addDays(LIVE_START, -1)) + " не показаны: данных за них нет." : "") + " Шкала накопления растёт ступенями по 5 000. Цветом отмечены школьные каникулы 2026/27: по четвертям — рекомендации Минпросвещения, по модульной системе 5+1 — типовой график (в регионах и школах даты могут отличаться).";
+  $("bigInfo").innerHTML = (F ? "<p>Сентябрь — по отчёту «Моей школы»: пары «ученик — урок» по дате первого просмотра. Дни с " + longDate(addDays(F.to, 1)) + " по " + longDate(addDays(LIVE_START, -1)) + " не показаны: данных за них нет.</p>" : "") +
+    "<p>Даты каникул 2026/27: по четвертям — рекомендации Минпросвещения, по модульной системе 5+1 — типовой график. В регионах и школах даты могут отличаться.</p>";
+  renderMonthKpi();
 }
 
 $("bigNav").addEventListener("click", e => { if (!X) return;
   const t = e.target.closest("button[data-m]"); if (t) { bigMonth = t.dataset.m; renderBig(); return; }
   const b = e.target.closest("button[data-d]"); if (!b || b.disabled) return;
   const d = pDate(bigMonth + "-01"); d.setUTCMonth(d.getUTCMonth() + +b.dataset.d); bigMonth = d.toISOString().slice(0, 7); renderBig(); });
+// Треугольник у числа: ▲ зелёный — рост, ▼ красный — падение; при наведении — на сколько отличается
+const MONTHS_D = ["январю","февралю","марту","апрелю","маю","июню","июлю","августу","сентябрю","октябрю","ноябрю","декабрю"];
+function trend(cur, base, baseLabel) {
+  if (base == null || cur == null) return "";
+  const diff = cur - base, pct = base ? Math.round(diff / base * 100) : null, cls = diff > 0 ? "up" : diff < 0 ? "down" : "flat";
+  const txt = (diff > 0 ? "+" : "") + fmt(diff) + (pct != null ? " (" + (pct > 0 ? "+" : "") + pct + "%)" : "") + " " + baseLabel + ": " + fmt(base);
+  return " <span class='trend " + cls + "' tabindex='0' role='button' aria-label='" + esc(txt) + "'>" + (diff > 0 ? "▲" : diff < 0 ? "▼" : "=") + "<span class='info-pop' role='tooltip'>" + esc(txt) + "</span></span>";
+}
+// «Просмотров учеников за месяц» — для месяца, выбранного на графике; сравнение с прошлым месяцем
+// (для текущего месяца — с теми же днями прошлого, чтобы сравнение было честным)
+function renderMonthKpi() {
+  const mSum = (mm, to) => { let t = 0, any = false; for (const k of X.keys) if (k.slice(0, 7) === mm && (!to || +k.slice(8) <= to)) { t += X.days[k].students; any = true; } return any ? t : null; };
+  const mm = bigMonth, cur = X.latest.slice(0, 7), mi = +mm.slice(5) - 1, t = mSum(mm);
+  const prev = (d => (d.setUTCMonth(d.getUTCMonth() - 1), d.toISOString().slice(0, 7)))(pDate(mm + "-01")), pi = +prev.slice(5) - 1;
+  let base = null, lab = "";
+  if (t != null) {
+    if (mm === cur) {
+      const day = +X.latest.slice(8), pLen = pDate(mm + "-01"); pLen.setUTCDate(0);
+      const whole = day >= pLen.getUTCDate();
+      base = whole ? mSum(prev) : mSum(prev, day); lab = whole ? "ко всему " + MONTHS_D[pi] : "к 1–" + day + " " + MONTHS[pi];
+    } else { base = mSum(prev); lab = "ко всему " + MONTHS_D[pi]; }
+  }
+  $("kMonLabel").textContent = "Просмотров учеников за " + MONTHS_N[mi].toLowerCase();
+  $("kMon").innerHTML = t == null ? "—" : fmt(t) + trend(t, base, lab);
+  $("kMonMeta").innerHTML = t == null ? "<span>" + (mm > cur ? "Месяц ещё не начался" : "Данных за этот месяц нет") + "</span>" : "";
+}
 function renderOverview() {
   renderBig();
   const { days, keys, latest } = X;
-  const L = days[latest];
   const total = keys.reduce((s,k) => s + days[k].students, 0);
   $("kTotal").textContent = fmt(total);
-  $("kTotalMeta").innerHTML = "<span>с " + longDate(X.first) + " по " + longDate(latest) + ", " + L.lastAt + "</span>";
-  const tAll = keys.reduce((s,k) => s + (days[k].teachers || 0), 0);
-  $("kTeach").textContent = fmt(tAll);
-  $("kTeachMeta").innerHTML = "<span><span class='delta flat'>" + pct1(tAll, tAll + total) + " всех просмотров</span></span>" +
-    "<span>за " + longDate(latest) + ": " + fmt(L.teachers || 0) + "</span><span>За них не платят, в остальные цифры они не входят</span>";
-  // прирост: к тому же дню недели неделей раньше, на то же время
-  $("kDayLabel").textContent = "Прирост за " + longDate(latest);
-  $("kDay").textContent = "+" + fmt(L.students);
-  const prevKey = addDays(latest, -7), P = days[prevKey];
-  const [hh, mm] = L.lastAt.split(":").map(Number), slot = Math.floor((hh*60+mm)/15);
-  const dm = ["<span>по состоянию на " + L.lastAt + "</span>"];
-  if (!P) dm.push("<span>Сравнение с " + WD_FULL[dow(latest)].toLowerCase() + "ом неделей раньше (" + longDate(prevKey) + ") появится, когда за него будут данные</span>");
-  else {
-    const same = X.latestDone || !P.slots ? P.students : P.slots.slice(0, slot+1).reduce((a,b)=>a+b,0), diff = L.students - same;
-    const pct = same ? Math.round(diff/same*100) : null, cls = diff > 0 ? "up" : diff < 0 ? "down" : "flat", arrow = diff > 0 ? "▲" : diff < 0 ? "▼" : "■";
-    dm.push("<span><span class='delta " + cls + "'>" + arrow + " " + (diff>0?"+":"") + fmt(diff) + (pct!=null ? " (" + (pct>0?"+":"") + pct + "%)" : "") + "</span></span>");
-    dm.push("<span>к " + longDate(prevKey) + " (" + wd(prevKey) + ")" + (X.latestDone ? ": " : " на то же время: ") + fmt(same) + (X.latestDone ? "" : " · за весь день: " + fmt(P.students)) + "</span>");
-  }
-  $("kDayMeta").innerHTML = dm.join("");
+  $("kTotalMeta").innerHTML = "";
+  // вчера — последний полный день (выгрузка приходит утром за весь прошлый день); сравнение с тем же днём недели неделей раньше
+  const yk = X.latestDone ? latest : addDays(latest, -1), Y = days[yk], pk = addDays(yk, -7), Pw = days[pk];
+  $("kDayLabel").textContent = "Просмотров учеников за " + longDate(yk);
+  $("kDay").innerHTML = Y ? fmt(Y.students) + trend(Y.students, Pw ? Pw.students : null, "к " + ["понедельнику","вторнику","среде","четвергу","пятнице","субботе","воскресенью"][dow(pk)] + " " + longDate(pk)) : "—";
+  $("kDayMeta").innerHTML = Y ? "" : "<span>За " + longDate(yk) + " данных нет</span>";
   // охват
-  const newS = Object.values(X.sFirst).filter(k => k === latest).length, newR = Object.values(X.rFirst).filter(k => k === latest).length;
+  const infoLabel = (label, text) => label + " <span class='info' tabindex='0' role='button' aria-label='Пояснение'>i<span class='info-pop' role='tooltip'>" + text + "</span></span>";
   $("reach").innerHTML =
-    kpiTile("Школ охвачено", fmt(Object.keys(X.E.school).length), "<span><span class='delta " + (newS ? "up" : "flat") + "'>+" + fmt(newS) + "</span> за " + longDate(latest) + "</span><span>школы, ученики которых хотя бы раз открыли наш урок</span>") +
-    kpiTile("Регионов охвачено", fmt(Object.keys(X.E.region).filter(r => r !== "Регион не указан").length) + " <span style='font-size:.5em;color:var(--muted)'>из 89</span>", "<span><span class='delta " + (newR ? "up" : "flat") + "'>+" + fmt(newR) + "</span> за " + longDate(latest) + "</span><span>регионы хотя бы с одним просмотром</span>");
+    kpiTile(infoLabel("Школ охвачено", "Школы, ученики которых хотя бы раз открыли наш урок (с " + longDate(X.first) + ")."), fmt(Object.keys(X.E.school).length), "") +
+    kpiTile(infoLabel("Регионов охвачено", "Регионы, из которых был хотя бы один просмотр ученика (с " + longDate(X.first) + ")."), fmt(Object.keys(X.E.region).filter(r => r !== "Регион не указан").length) + " <span style='font-size:.5em;color:var(--muted)'>из 89</span>", "");
   // топ-5
-  const reg = {}, reg7 = {};
+  const reg = {};
   for (const k of keys) { const r = days[k].regions || {}; for (const c in r) add(reg, regionName(c), r[c]); }
-  for (const r in X.W7.region) reg7[r] = X.W7.region[r];
   renderRank("topAll", sortEntries(reg), sumVals(reg));
-  renderRank("topWeek", X.hasW7 ? sortEntries(reg7) : [], sumVals(reg7), "Появится, когда наберутся 7 полных дней");
-  $("topAllCap").textContent = $("topSchoolsCap").textContent = $("topCoursesCap").textContent = "С " + longDate(X.first) + " по " + longDate(latest);
-  $("topWeekCap").textContent = "Просмотры за " + w7Label() + " (7 полных дней)";
-  renderRank("topSchools", sortEntries(X.E.school).map(([i, v]) => [X.schools[i][0], v, X.regOfSchool[i]]), sumVals(X.E.school));
+  $("topAllCap").textContent = $("topCoursesCap").textContent = "С " + longDate(X.first) + " по " + longDate(latest);
   renderRank("topCourses", sortEntries(X.E.course).map(([c, v]) => [courseName(c), v]), sumVals(X.E.course));
 }
 
@@ -1111,12 +1116,12 @@ function render() {
   tab = readTab();
   document.querySelectorAll(".tabs a").forEach(a => { if (a.dataset.tab === tab) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   if (!loaded) return;
-  if (!X) { TABS.forEach(t => $("p-" + t).hidden = true); const old = J && !J.ls; $("emptyState").hidden = old; $("coverage").textContent = old ? "Ждём обновления скрипта Google" : "Данных пока нет"; return; }
+  if (!X) { TABS.forEach(t => $("p-" + t).hidden = true); const old = J && !J.ls; $("emptyState").hidden = old; $("coverage").hidden = false; $("coverage").textContent = old ? "Ждём обновления скрипта Google" : "Данных пока нет"; return; }
   $("emptyState").hidden = true;
   TABS.forEach(t => $("p-" + t).hidden = t !== tab);
   const L = X.days[X.latest];
-  $("coverage").textContent = "Учёт с " + longDate(X.first) + " по " + longDate(X.latest) + " " + L.lastAt + " (мск)";
-  $("updData").textContent = "Данные в таблице обновлены " + longDate(X.latest) + " в " + L.lastAt + " мск";
+  $("coverage").hidden = true; // строка «Учёт с … по …» больше не показывается; остаётся только для загрузки и ошибок
+  $("updData").textContent = "Данные получены " + longDate(X.latest) + " в " + L.lastAt + " мск";
   ({ overview: renderOverview, regions: renderRegions, schools: renderSchools, courses: renderCourses, lessons: renderLessons, weekdays: renderWeekdays, billing: renderBilling })[tab]();
 }
 window.addEventListener("hashchange", () => { render(); window.scrollTo(0, 0); });
@@ -1144,7 +1149,7 @@ function withFrozen(j) {
 }
 function apply(j) {
   RAW = j; J = withFrozen(j); X = j.ls ? derive() : null; loaded = true;
-  $("updAdmin").textContent = j.latestFile ? "Таблица обновлена администратором " + new Date(j.latestFile.updated).toLocaleString("ru-RU", { timeZone: "Europe/Moscow", day: "numeric", month: "long" }) + " в " + new Date(j.latestFile.updated).toLocaleTimeString("ru-RU", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit" }) + " мск" : "";
+  $("updAdmin").textContent = j.latestFile ? "Дашборд обновлён " + new Date(j.latestFile.updated).toLocaleString("ru-RU", { timeZone: "Europe/Moscow", day: "numeric", month: "long" }) + " в " + new Date(j.latestFile.updated).toLocaleTimeString("ru-RU", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit" }) + " мск" : "";
   render();
 }
 try { const c = localStorage.getItem(LS_CAT); if (c) C = Object.assign({ courses: {}, lessons: {} }, JSON.parse(c)); } catch (_) {}
@@ -1171,7 +1176,7 @@ async function load() {
     apply(j);
     try { if (j.ls) localStorage.setItem(LS_KEY, text); } catch (_) {}
   } catch (e) {
-    if (!loaded) { status("Не удалось получить данные: " + esc((e && e.message) || e) + ". Проверьте интернет и обновите страницу.", "err"); $("coverage").textContent = "Нет данных"; }
+    if (!loaded) { status("Не удалось получить данные: " + esc((e && e.message) || e) + ". Проверьте интернет и обновите страницу.", "err"); $("coverage").hidden = false; $("coverage").textContent = "Нет данных"; }
   } finally { busy = false; }
 }
 setInterval(() => { if (document.visibilityState === "visible") load(); }, 5 * 60 * 1000);
