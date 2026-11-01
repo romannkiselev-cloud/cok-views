@@ -506,7 +506,7 @@ function derive() {
   if (!keys.length) return null;
   const first = keys[0], latest = keys[keys.length - 1];
   const latestDone = days[latest].lastAt >= "23:45";
-  const fullDays = keys.filter(k => k >= LIVE_START && (k !== latest || latestDone)); // для средних по дням недели
+  const fullDays = keys.filter(k => k >= LIVE_START && !(k in DAYS_OFF) && (k !== latest || latestDone)); // для средних по дням недели
   const avgFrom = fullDays.length ? fullDays[0] : LIVE_START;
   const nWd = Array(7).fill(0); fullDays.forEach(k => nWd[dow(k)]++);
   // окна по 7 полных дней: последние (до вчера) и предыдущие
@@ -606,7 +606,7 @@ function drawBars(el, pts) {
     s += "<rect x='" + (cx - step / 2) + "' y='" + m.t + "' width='" + step + "' height='" + ih + "' fill='var(--h" + t + ")' opacity='0.6'><title>" + hs.map(h => h.name).join(", ") + "</title></rect>"; });
   pts.forEach((p, i) => { const cx = m.l + step * i + step / 2;
     if (p.v > 0) { const top = y(p.v); s += "<rect x='" + (cx - bw/2) + "' y='" + top + "' width='" + bw + "' height='" + (m.t + ih - top) + "' rx='2' fill='" + (p.partial ? "var(--accent-soft)" : "var(--accent)") + "'><title>" + longDate(p.k) + ", " + wd(p.k) + ": " + fmt(p.v) + "</title></rect>"; }
-    if ((pts.length - 1 - i) % every === 0) { const we = dow(p.k) >= 5;
+    if ((pts.length - 1 - i) % every === 0) { const we = isOff(p.k);
       s += "<text x='" + cx + "' y='" + (H - 20) + "' text-anchor='middle' style='fill:var(--ink)'>" + shortDate(p.k) + "</text>";
       s += "<text x='" + cx + "' y='" + (H - 6) + "' text-anchor='middle' style='fill:" + (we ? "var(--bad)" : "var(--muted)") + "'>" + WD_SHORT[dow(p.k)].toLowerCase() + "</text>"; } });
   s += "<line x1='" + m.l + "' x2='" + (W - m.r) + "' y1='" + (m.t + ih) + "' y2='" + (m.t + ih) + "' style='stroke:var(--faint)'/></svg>";
@@ -656,6 +656,9 @@ const HOLIDAYS = [
   { t: "m", from: "2027-05-27", to: "2027-08-31", name: "Летние каникулы" }
 ];
 const holidaysOn = k => HOLIDAYS.filter(h => k >= h.from && k <= h.to);
+// Праздничные выходные: на графиках день недели красный, как у субботы и воскресенья; в средние по дням недели не входят
+const DAYS_OFF = { "2026-11-04": "День народного единства" };
+const isOff = k => dow(k) >= 5 || k in DAYS_OFF;
 const HOL_LABEL = { q: "четверти", m: "модули 5+1" };
 /** Шкала «ступеньками по 5 000»: верх — ближайшее кратное шага с запасом, чтобы точка не упиралась в край. */
 function stepScale(v, base) {
@@ -723,7 +726,7 @@ function renderBig() {
   pts.forEach((p, i) => { if (p.v > 0) { const tp = y2(p.v); s += "<rect x='" + (x(i) - bw / 2) + "' y='" + tp + "' width='" + bw + "' height='" + (B2 - tp) + "' rx='3' fill='" + (isPartialDay(p.k) ? "var(--accent-soft)" : "var(--accent)") + "'/>"; } });
   s += "<line x1='0' x2='" + W + "' y1='" + B1 + "' y2='" + B1 + "' style='stroke:var(--faint)'/><line x1='0' x2='" + W + "' y1='" + B2 + "' y2='" + B2 + "' style='stroke:var(--faint)'/>";
   // подписи: число, день недели, месяц
-  pts.forEach((p, i) => { const dd = pDate(p.k).getUTCDate(), we = dow(p.k) >= 5, today = p.k === X.latest;
+  pts.forEach((p, i) => { const dd = pDate(p.k).getUTCDate(), we = isOff(p.k), today = p.k === X.latest;
     s += "<text x='" + x(i) + "' y='" + (B2 + 14) + "' text-anchor='middle' style='fill:" + (today ? "var(--accent)" : "var(--ink)") + ";font-weight:" + (today ? 600 : 400) + "'>" + dd + "</text>";
     s += "<text x='" + x(i) + "' y='" + (B2 + 27) + "' text-anchor='middle' style='fill:" + (we ? "var(--bad)" : "var(--muted)") + "'>" + WD_SHORT[dow(p.k)].toLowerCase() + "</text>";
   });
@@ -735,7 +738,7 @@ function renderBig() {
     const show = () => { const p = pts[+r.dataset.i], hs = holidaysOn(p.k);
       tip.innerHTML = "<b>" + longDate(p.k) + ", " + WD_FULL[dow(p.k)].toLowerCase() + "</b><br>" + (p.v == null ? "дата ещё не наступила" : "за день: " + fmt(p.v) + (isPartialDay(p.k) ? " (день ещё идёт)" : "") + "<br>всего на конец дня: " + fmt(p.cum)) +
         hs.map(h => "<br>" + h.name).join("");
-      tip.style.left = Math.max(110, Math.min(plot.scrollWidth - 110, x(+r.dataset.i))) + "px"; tip.style.top = (T1 + 4) + "px"; tip.style.transform = "translate(-50%, 0)"; tip.hidden = false; };
+      tip.style.left = Math.max(150, Math.min(plot.scrollWidth - 150, x(+r.dataset.i))) + "px"; tip.style.top = (T1 + 4) + "px"; tip.style.transform = "translate(-50%, 0)"; tip.hidden = false; };
     r.addEventListener("mouseenter", show); r.addEventListener("click", show);
     r.addEventListener("mouseleave", () => { tip.hidden = true; });
   });
