@@ -87,6 +87,11 @@ h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(22px, 
 .chart svg { width: 100%; height: auto; display: block; overflow: visible; }
 .chart text { fill: var(--muted); font-family: var(--font-body); font-size: 12px; }
 .chart .grid line { stroke: var(--line); }
+.bb-head { align-items: center; margin-bottom: 12px; }
+.bb-ctl { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+@media (min-width: 640px) { .bb-ctl { flex-wrap: nowrap; } .bb-ctl .regsearch { width: 240px; } }
+#bbTable tfoot td { font-weight: 600; border-top: 1px solid var(--line); border-bottom: 0; padding-top: 10px; }
+#bbTable td.sum { font-weight: 600; }
 .regsearch { font: inherit; font-size: 14px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; width: min(280px, 100%); }
 #regTable tbody tr.zero td { color: var(--faint); }
 .sortable tbody tr.sc-detail > td { background: var(--bg); padding: 14px 14px 18px; cursor: default; }
@@ -384,6 +389,16 @@ td.peak b { font-weight: 600; }
         <section class="panel kpi bill"><div class="label">7–11 классы</div><div class="value" id="bHigh">—</div><div class="meta" id="bHighMeta"></div></section>
         <section class="panel kpi bill bill-total"><div class="label" id="bTotalLabel">Итого</div><div class="value" id="bTotal">—</div><div class="meta" id="bTotalMeta"></div></section>
       </div>
+      <section class="panel" id="bbPanel" style="margin-top:20px">
+        <div class="panel-head bb-head">
+          <h2 class="with-info" style="margin:0 !important"><span id="bbTitle">Разбивка</span> <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="bbInfo"></span></span></h2>
+          <div class="bb-ctl">
+            <div class="seg" role="group" aria-label="Разбивка" id="bbSeg"><button type="button" data-v="region" aria-pressed="true">Регионы</button><button type="button" data-v="course" aria-pressed="false">Курсы</button></div>
+            <input type="search" id="bbSearch" class="regsearch" placeholder="Найти регион" aria-label="Поиск">
+          </div>
+        </div>
+        <div class="scroll" id="bbTable"></div>
+      </section>
     </div>
   </section>
 </div>
@@ -587,7 +602,7 @@ function sortTable(el, cols, rows, st, opts) {
   let h = "<table class='sortable'><thead><tr>" + (opts.numbered ? "<th class='idx'>№</th>" : "") + cols.map(c => "<th" + (c.num || c.cls === "r" ? " class='r'" : "") + "><button type='button' data-k='" + c.k + "'" + (c.k === st.sort ? " aria-sort='" + (st.dir < 0 ? "descending" : "ascending") + "'" : "") + ">" + c.label + "</button></th>").join("") + "</tr></thead><tbody>";
   h += shown.map((r, i) => "<tr" + (opts.onRow ? " class='click" + (st.sel === r.id ? " sel" : "") + "' data-id='" + esc(r.id) + "' tabindex='0'" : "") + ">" + (opts.numbered ? "<td class='idx'>" + (i + 1) + "</td>" : "") + cols.map(c => "<td class='" + (c.num || c.cls === "r" ? "r" : (c.cls || "name")) + "'>" + (c.html ? c.html(r) : (c.num ? fmt(r[c.k]) : esc(r[c.k]))) + "</td>").join("") + "</tr>").join("");
   if (!shown.length) h += "<tr><td class='na' colspan='" + (cols.length + (opts.numbered ? 1 : 0)) + "'>Ничего не найдено</td></tr>";
-  h += "</tbody></table>";
+  h += "</tbody>" + (opts.foot ? "<tfoot>" + opts.foot + "</tfoot>" : "") + "</table>";
   if (st.limit && sorted.length > st.limit) h += "<button type='button' class='more'>" + (opts.allLabel ? opts.allLabel + " (" + fmt(sorted.length) + ")" : "Показать ещё (" + fmt(sorted.length - st.limit) + ")") + "</button>";
   else if (opts.allLabel && st.limit === null && sorted.length > 10) h += "<button type='button' class='more' data-collapse='1'>Свернуть до топ-10</button>";
   el.innerHTML = h;
@@ -1010,7 +1025,7 @@ const mondayOf = k => addDays(k, -dow(k));
 
 // ---------- Биллинг ----------
 // Пароль живёт только в памяти страницы: после перезагрузки его нужно ввести снова.
-const bill = { pass: null, data: null, at: 0, busy: false, err: "", month: null };
+const bill = { pass: null, data: null, at: 0, busy: false, err: "", month: null, view: "region", st: { region: { sort: "sum", dir: -1 }, course: { sort: "sum", dir: -1 } }, drawBreak: null };
 const rub = n => Math.round(n).toLocaleString("ru-RU") + "\u00a0₽"; // неразрывный пробел: знак рубля не уезжает на новую строку
 const lessonsWord = n => n.toLocaleString("ru-RU") + " " + plural(n, "урок", "урока", "уроков");
 async function fetchBilling(pass) {
@@ -1091,6 +1106,7 @@ function renderBilling() {
   $("bTotalLabel").textContent = "Итого за " + mName;
   $("bTotal").textContent = rub(nL * P["1-6"] + nH * P["7-11"]); $("bTotalMeta").textContent = lessonsWord(nL + nH);
   }
+  renderBillBreak(M, D.prices);
   const R = D.rules, sh = Math.round(R.minShare * 100);
   const items = [
     "Ученик провёл на уроке не меньше " + sh + "% нормы и не больше самой нормы: 1–4 классы — от " + fmtMin(R.norms["1-4"] * R.minShare) + " до " + R.norms["1-4"] + " минут, 5–11 классы — от " + fmtMin(R.norms["5-11"] * R.minShare) + " до " + R.norms["5-11"] + " минут.",
@@ -1103,6 +1119,61 @@ function renderBilling() {
   if (M.daysWithoutData) items.push("За " + M.daysWithoutData + " " + plural(M.daysWithoutData, "день", "дня", "дней") + " нет времени и баллов в выгрузке — эти дни не посчитаны.");
   $("billRules").innerHTML = items.map(t => "<li>" + esc(t) + "</li>").join("");
 }
+// Разбивка биллинга за месяц: по регионам (с группами классов) или по курсам.
+// Сентябрь — оценка: пары «ученик — урок» × доля попадания в биллинг опорного месяца, по каждой группе классов.
+function billBreakRows(M, P) {
+  const reg = {}, crs = {}, R = c => reg[c] || (reg[c] = { "1-6": 0, "7-11": 0, views: 0 }), Cc = c => crs[c] || (crs[c] = { lessons: 0, views: 0 });
+  if (M.est) {
+    for (const k of X.keys) { if (k.slice(0, 7) !== M.month) continue; const ls = J.ls[k] || {};
+      for (const pk in ls) { const p = pk.indexOf("|"), cid = lessonCourseOf(pk.slice(0, p)), si = pk.slice(p + 1), v = ls[pk];
+        const code = X.schools[si] ? String(X.schools[si][1]) : "0", g = cid ? gradeOf(cid) : null, band = g ? (g <= 6 ? "1-6" : "7-11") : null;
+        R(code).views += v; if (band) R(code)[band] += v;
+        if (cid) { Cc(cid).views += v; if (band) Cc(cid).lessons += v; } } }
+    // пары → уроки: доля своей группы классов, округляем в каждой строке
+    for (const c in reg) for (const b of ["1-6", "7-11"]) reg[c][b] = Math.round(reg[c][b] * M.est.share[b]);
+    for (const c in crs) { const g = gradeOf(c); crs[c].lessons = g ? Math.round(crs[c].lessons * M.est.share[g <= 6 ? "1-6" : "7-11"]) : 0; }
+  } else if (M.byRegion) {
+    for (const c in M.byRegion) Object.assign(R(c), M.byRegion[c]);
+    for (const c in (M.byCourse || {})) Object.assign(Cc(c), M.byCourse[c]);
+  } else return null;
+  const share = (n, v) => v ? n / v * 100 : null;
+  const regions = Object.keys(reg).filter(c => c !== "0").map(c => { const b = reg[c], n = b["1-6"] + b["7-11"];
+    return { id: c, name: regionName(c), n, s1: b["1-6"] * P["1-6"], s2: b["7-11"] * P["7-11"], sum: b["1-6"] * P["1-6"] + b["7-11"] * P["7-11"], views: b.views, share: share(n, b.views) }; }).filter(r => r.n || r.views);
+  const courses = Object.keys(crs).map(c => { const b = crs[c], g = gradeOf(c), pr = g ? P[g <= 6 ? "1-6" : "7-11"] : 0;
+    return { id: c, name: courseName(c), n: b.lessons, sum: b.lessons * pr, views: b.views, share: share(b.lessons, b.views) }; }).filter(r => r.n || r.views);
+  return { regions, courses };
+}
+function renderBillBreak(M, P) {
+  const mName = M.empty ? "" : MONTHS_N[+M.month.slice(5) - 1].toLowerCase(), v = bill.view;
+  $("bbTitle").textContent = (v === "region" ? "По регионам" : "По курсам") + (mName ? " за " + mName : "") + (M.est ? " (оценка)" : "");
+  document.querySelectorAll("#bbSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === v)));
+  $("bbSearch").placeholder = v === "region" ? "Найти регион" : "Найти курс";
+  $("bbInfo").innerHTML = "<p>Уроков — засчитано в биллинг" + (v === "region" ? "; суммы по 1–6 и 7–11 классам — по цене урока группы" : "; цена урока — по классу курса") + ".</p><p>В биллинг — какая доля всех просмотров учеников " + (v === "region" ? "региона" : "курса") + " за те же дни засчитана.</p>" +
+    (M.est ? "<p>Оценка: в отчёте «Моей школы» нет времени на уроке и баллов, поэтому к парам «ученик — урок» применена доля попадания в биллинг за " + MONTHS_N[+M.est.from.slice(5) - 1].toLowerCase() + " — отдельно для 1–6 и 7–11 классов. Уроки округлены в каждой строке, поэтому итог может на несколько уроков расходиться с суммой вверху. Доля «в биллинг» здесь у всех почти одинаковая и различается только составом классов.</p>" : "") +
+    "<p>Нажмите на заголовок столбца, чтобы отсортировать.</p>";
+  const T = M.empty ? null : billBreakRows(M, P);
+  if (!T) { $("bbTable").innerHTML = "<p class='cap' style='margin:0'>" + (M.empty ? "Данных за этот месяц пока нет." : "Появится после обновления скрипта Google.") + "</p>"; return; }
+  const est = M.est ? "≈\u00a0" : "", rr = x => x ? est + rub(x) : "—", nn = x => est + fmt(Math.round(x)), pc = x => x == null ? "—" : est + pct1(x, 100);
+  const cols = v === "region" ? [
+    { k: "name", label: "Регион" }, { k: "n", label: "Уроков", num: true, html: r => nn(r.n) },
+    { k: "s1", label: "1–6 кл.", num: true, html: r => rr(r.s1) }, { k: "s2", label: "7–11 кл.", num: true, html: r => rr(r.s2) },
+    { k: "sum", label: "Сумма", num: true, html: r => "<b>" + rr(r.sum) + "</b>" }, { k: "share", label: "В биллинг", num: true, html: r => pc(r.share) }
+  ] : [
+    { k: "name", label: "Курс" }, { k: "n", label: "Уроков", num: true, html: r => nn(r.n) },
+    { k: "sum", label: "Сумма", num: true, html: r => "<b>" + rr(r.sum) + "</b>" }, { k: "share", label: "В биллинг", num: true, html: r => pc(r.share) }
+  ];
+  const all = v === "region" ? T.regions : T.courses, st = bill.st[v];
+  const draw = () => {
+    const q = ($("bbSearch").value || "").trim().toLowerCase(), rows = q ? all.filter(r => r.name.toLowerCase().includes(q)) : all;
+    const t = k => rows.reduce((a, r) => a + (r[k] || 0), 0), N = t("n"), V = t("views");
+    const foot = "<tr><td class='idx'></td><td class='name'>" + (q ? "Итого по найденным" : "Итого") + " · " + fmt(rows.length) + "</td><td class='r'>" + nn(N) + "</td>" +
+      (v === "region" ? "<td class='r'>" + rr(t("s1")) + "</td><td class='r'>" + rr(t("s2")) + "</td>" : "") + "<td class='r'>" + rr(t("sum")) + "</td><td class='r'>" + pc(V ? N / V * 100 : null) + "</td></tr>";
+    sortTable($("bbTable"), cols, rows, st, { numbered: true, rerender: draw, foot });
+  };
+  bill.drawBreak = draw; draw();
+}
+$("bbSeg").addEventListener("click", e => { const b = e.target.closest("button[data-v]"); if (!b || b.dataset.v === bill.view) return; bill.view = b.dataset.v; $("bbSearch").value = ""; renderBilling(); });
+$("bbSearch").addEventListener("input", () => { if (bill.drawBreak) bill.drawBreak(); });
 const fmtMin = v => (Math.round(v * 10) / 10).toLocaleString("ru-RU");
 $("billForm").addEventListener("submit", e => { e.preventDefault(); const v = $("billPass").value; if (v) fetchBilling(v); });
 $("billNav").addEventListener("click", e => {

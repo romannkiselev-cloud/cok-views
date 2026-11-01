@@ -17,7 +17,7 @@ const FOLDER_ID = 'ВСТАВЬТЕ_СЮДА_ID_ПАПКИ';
 const STATE_FILE_NAME = '_dashboard_state.json'; // служебный файл, не удаляйте и не переименовывайте
 const TZ_OFFSET_HOURS = 3;                         // Metabase отдаёт время в UTC, переводим в Москву
 const REFRESH_MINUTES = 5;                         // как часто скрипт сам проверяет папку (после запуска setup)
-const STATE_VERSION = 7;                           // формат служебного файла (6 — с биллингом, 7 — с часами по курсам и школам)
+const STATE_VERSION = 7;                           // формат служебного файла (6 — с биллингом, 7 — с часами по курсам и школам и разбивкой биллинга)
 const START_DATE = '2026-10-06';                   // учитываем данные только с этой даты (мск)
 // Уроки, убранные из каталога «Моей школы» при чистке (октябрь 2026): их просмотры не оплачиваются
 // и в статистику не попадают. Номера уроков у Фоксфорда (lessonProviderId).
@@ -358,7 +358,7 @@ function aggregate_(rows) {
     if (!d) {
       d = days[k] = { date: k, total: 0, students: 0, teachers: 0, firstAt: hm, lastAt: hm, partialStart: false, regions: {}, ls: {}, slots: [] };
       for (let s = 0; s < 96; s++) d.slots.push(0);
-      if (isNew) d.bill = { '1-6': 0, '7-11': 0, unknown: 0 }; // уроки, попавшие в биллинг
+      if (isNew) { d.bill = { '1-6': 0, '7-11': 0, unknown: 0 }; d.bR = {}; d.bC = {}; } // уроки, попавшие в биллинг: всего, «регион|классы», по курсам
       d.ch = {}; // «курс|час по местному времени региона» → просмотры учеников
       d.sh = {}; // «школа|час по местному времени региона» → просмотры учеников
     }
@@ -376,7 +376,7 @@ function aggregate_(rows) {
     const cid = cC >= 0 ? str(r[cC]) : '', lid = cL >= 0 ? str(r[cL]) : '';
     if (lid && cid) lessonCourse[lid] = cid;
     // Одна связка «урок | школа» даёт всё остальное: курс (через урок) и регион (через школу)
-    if (isNew) billRow_(d, r, cid, cTS, cTE, cP);
+    if (isNew) billRow_(d, r, cid, cTS, cTE, cP, code);
     const lh = (t.getUTCHours() + (REGION_UTC[code] != null ? REGION_UTC[code] : 3) - 3 + 24) % 24;
     if (cid && d.ch) d.ch[cid + '|' + lh] = (d.ch[cid + '|' + lh] || 0) + 1;
     if (sid && d.sh) d.sh[sid + '|' + lh] = (d.sh[sid + '|' + lh] || 0) + 1;
@@ -390,7 +390,7 @@ function aggregate_(rows) {
 }
 
 /** Засчитывает просмотр ученика в биллинг дня, если он проходит условия. */
-function billRow_(d, r, cid, cTS, cTE, cP) {
+function billRow_(d, r, cid, cTS, cTE, cP, code) {
   const grade = COURSE_GRADES[cid];
   if (!grade) { d.bill.unknown++; return; }
   const a = toMsk_(r[cTS], 0), b = toMsk_(r[cTE], 0);
@@ -399,7 +399,10 @@ function billRow_(d, r, cid, cTS, cTE, cP) {
   if (minutes < BILL_MIN_SHARE * norm || minutes > norm) return;
   const pts = parseFloat(String(r[cP] == null ? '' : r[cP]).replace(',', '.'));
   if (!(pts > BILL_MIN_POINTS)) return;
-  d.bill[BILL_BAND(grade)]++;
+  const band = BILL_BAND(grade);
+  d.bill[band]++;
+  if (d.bR) d.bR[code + '|' + band] = (d.bR[code + '|' + band] || 0) + 1;
+  if (d.bC) d.bC[cid] = (d.bC[cid] || 0) + 1;
 }
 
 /** Ответ вкладке «Биллинг»: число засчитанных уроков по месяцам и группам классов. */
@@ -409,10 +412,17 @@ function billingView_(state) {
   let latest = null, noData = 0;
   keys.forEach(function (k) {
     const d = state.days[k], m = k.slice(0, 7);
-    const mo = months[m] || (months[m] = { month: m, from: k, to: k, lessons: { '1-6': 0, '7-11': 0 }, unknown: 0, daysWithoutData: 0 });
+    const mo = months[m] || (months[m] = { month: m, from: k, to: k, lessons: { '1-6': 0, '7-11': 0 }, unknown: 0, daysWithoutData: 0, byRegion: {}, byCourse: {} });
     mo.to = k;
     if (!d.bill) { mo.daysWithoutData++; noData++; return; }
     mo.lessons['1-6'] += d.bill['1-6'] || 0; mo.lessons['7-11'] += d.bill['7-11'] || 0; mo.unknown += d.bill.unknown || 0;
+    // разбивка: засчитанные уроки и все просмотры учеников за те же дни (для доли попадания в биллинг)
+    const reg = function (c) { return mo.byRegion[c] || (mo.byRegion[c] = { '1-6': 0, '7-11': 0, views: 0 }); };
+    Object.keys(d.regions || {}).forEach(function (c) { reg(c).views += d.regions[c]; });
+    Object.keys(d.bR || {}).forEach(function (x) { const p = x.indexOf('|'); reg(x.slice(0, p))[x.slice(p + 1)] += d.bR[x]; });
+    const crs = function (c) { return mo.byCourse[c] || (mo.byCourse[c] = { lessons: 0, views: 0 }); };
+    Object.keys(d.ch || {}).forEach(function (x) { crs(x.slice(0, x.indexOf('|'))).views += d.ch[x]; });
+    Object.keys(d.bC || {}).forEach(function (c) { crs(c).lessons += d.bC[c]; });
     latest = { date: k, lastAt: d.lastAt };
   });
   return { version: 1, generatedAt: new Date().toISOString(), updatedAt: state.updatedAt || null, latest: latest,
