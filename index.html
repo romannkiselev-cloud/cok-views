@@ -26,18 +26,19 @@
   --font-display: "Unbounded", "Golos Text", system-ui, sans-serif;
   --font-body: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --r: 10px;
+  --avg: #B4BDCA; --lastwk: #8EA6E3;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0E131A; --surface: #161D27; --ink: #E6EBF2; --muted: #9AA5B6; --faint: #6F7A8C;
     --line: #273142; --accent: #7F9EF3; --accent-soft: #34477A; --accent-wash: #1C2740;
-    --good: #4CC38A; --bad: #F07A63; --warn-bg: #2F2610; --warn-ink: #F2C46B; color-scheme: dark;
+    --good: #4CC38A; --bad: #F07A63; --warn-bg: #2F2610; --warn-ink: #F2C46B; --avg: #4C5768; --lastwk: #3E5694; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0E131A; --surface: #161D27; --ink: #E6EBF2; --muted: #9AA5B6; --faint: #6F7A8C;
   --line: #273142; --accent: #7F9EF3; --accent-soft: #34477A; --accent-wash: #1C2740;
-  --good: #4CC38A; --bad: #F07A63; --warn-bg: #2F2610; --warn-ink: #F2C46B; color-scheme: dark;
+  --good: #4CC38A; --bad: #F07A63; --warn-bg: #2F2610; --warn-ink: #F2C46B; --avg: #4C5768; --lastwk: #3E5694; color-scheme: dark;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -248,7 +249,6 @@ td.peak b { font-weight: 600; }
     <a href="#overview" data-tab="overview">Общая</a>
     <a href="#regions" data-tab="regions">Регионы</a>
     <a href="#courses" data-tab="courses">Курсы</a>
-    <a href="#weekdays" data-tab="weekdays">Дни недели</a>
     <a href="#billing" data-tab="billing">Биллинг</a>
   </nav>
 
@@ -272,23 +272,11 @@ td.peak b { font-weight: 600; }
       <div class="legend"><span><i style="background:var(--accent)"></i>за день</span><span><i style="background:var(--accent-soft)"></i>день ещё идёт</span><span><i style="background:var(--s1);height:3px;vertical-align:3px"></i>всего нарастающим итогом</span><span><i style="background:var(--hq);box-shadow:inset 0 0 0 1px var(--hq-bar)"></i>четвертные каникулы</span><span><i style="background:var(--hm);box-shadow:inset 0 0 0 1px var(--hm-bar)"></i>модульные каникулы</span></div>
     </section>
 
-    <div class="grid3">
-      <section class="panel kpi">
-        <div class="label">Всего просмотров учеников</div>
-        <div class="value" id="kTotal">—</div>
-        <div class="meta" id="kTotalMeta"></div>
-      </section>
-      <section class="panel kpi">
-        <div class="label" id="kMonLabel">Всего просмотров за месяц</div>
-        <div class="value" id="kMon">—</div>
-        <div class="meta" id="kMonMeta"></div>
-      </section>
-      <section class="panel kpi">
-        <div class="label" id="kDayLabel">Всего просмотров за вчера</div>
-        <div class="value" id="kDay">—</div>
-        <div class="meta" id="kDayMeta"></div>
-      </section>
-    </div>
+    <section class="panel">
+      <h2 class="with-info">Просмотры учеников по дням недели <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="wbInfo"></span></span></h2>
+      <div class="chart" id="wbChart"></div>
+      <div class="legend" id="wbLegend"></div>
+    </section>
 
     <div class="grid2" id="reach"></div>
 
@@ -370,29 +358,6 @@ td.peak b { font-weight: 600; }
   </section>
 
   <!-- ===== Уроки ===== -->
-
-  <!-- ===== Дни недели ===== -->
-  <section class="page" id="p-weekdays" hidden>
-    <section class="panel lines">
-      <h2 class="with-info">Текущая неделя в сравнении <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="wdCap"></span></span></h2>
-      <div class="chart" id="wdChart"></div>
-      <div class="legend" id="wdLegend"></div>
-    </section>
-    <section class="panel">
-      <div class="chart-head">
-        <div>
-          <h2 class="with-info">Топ-10 по дням недели <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="wdTopCap"></span></span></h2>
-        </div>
-        <div class="seg" role="group" aria-label="Что показать" id="wdCat">
-          <button type="button" data-c="course" aria-pressed="true">Курсы</button>
-          <button type="button" data-c="lesson" aria-pressed="false">Уроки</button>
-          <button type="button" data-c="school" aria-pressed="false">Школы</button>
-          <button type="button" data-c="region" aria-pressed="false">Регионы</button>
-        </div>
-      </div>
-      <div class="scroll" id="wdTop"></div>
-    </section>
-  </section>
 
   <!-- ===== Биллинг (закрыт паролем; цифры приходят от скрипта Google только после проверки пароля) ===== -->
   <section class="page" id="p-billing" hidden>
@@ -481,7 +446,7 @@ const LIVE_START = "2026-10-06";
 let RAW = null, F = null;
 const API_URL = "https://script.google.com/macros/s/AKfycbxo5ZSX9LMqDuFtD__1MHJxMdQLc_lHAzmA7fWr_DVR9y9DU2Xrvmk3FIMc1W_Fm0ZGzQ/exec";
 let J = null, C = { courses: {}, lessons: {}, cok: null }, X = null;
-let loaded = false, tab = "overview", wdCat = "course";
+let loaded = false, tab = "overview";
 let bigMonth = null; // месяц на графике «по дням», ГГГГ-ММ; по умолчанию — месяц последних данных
 const ui = {
   reg: { sort: "total", dir: -1, sel: null },
@@ -748,7 +713,6 @@ function renderBig() {
   bigMonth = comboChart({ el: $("big"), months: $("bigMonths"), nav: $("bigNav"), plotId: "bigPlot", month: bigMonth, val: k => X.days[k].students });
   $("bigInfo").innerHTML = (F ? "<p>Сентябрь — по отчёту «Моей школы»: пары «ученик — урок» по дате первого просмотра. Дни с " + longDate(addDays(F.to, 1)) + " по " + longDate(addDays(LIVE_START, -1)) + " не показаны: данных за них нет.</p>" : "") +
     "<p>Даты каникул 2026/27: по четвертям — рекомендации Минпросвещения, по модульной системе 5+1 — типовой график. В регионах и школах даты могут отличаться.</p>";
-  renderMonthKpi();
 }
 
 $("bigNav").addEventListener("click", e => { if (!X) return;
@@ -764,35 +728,10 @@ function trend(cur, base, baseLabel) {
   const txt = (diff > 0 ? "+" : "") + fmt(diff) + (pct != null ? " (" + (pct > 0 ? "+" : "") + pct + "%)" : "") + " " + baseLabel + ": " + fmt(base);
   return " <span class='trend " + cls + "' tabindex='0' role='button' aria-label='" + esc(txt) + "'>" + (diff > 0 ? "▲" : diff < 0 ? "▼" : "=") + "<span class='info-pop' role='tooltip'>" + esc(txt) + "</span></span>";
 }
-// «Просмотров учеников за месяц» — для месяца, выбранного на графике; сравнение с прошлым месяцем
-// (для текущего месяца — с теми же днями прошлого, чтобы сравнение было честным)
-function renderMonthKpi() {
-  const mSum = (mm, to) => { let t = 0, any = false; for (const k of X.keys) if (k.slice(0, 7) === mm && (!to || +k.slice(8) <= to)) { t += X.days[k].students; any = true; } return any ? t : null; };
-  const mm = bigMonth, cur = X.latest.slice(0, 7), mi = +mm.slice(5) - 1, t = mSum(mm);
-  const prev = (d => (d.setUTCMonth(d.getUTCMonth() - 1), d.toISOString().slice(0, 7)))(pDate(mm + "-01")), pi = +prev.slice(5) - 1;
-  let base = null, lab = "";
-  if (t != null) {
-    if (mm === cur) {
-      const day = +X.latest.slice(8), pLen = pDate(mm + "-01"); pLen.setUTCDate(0);
-      const whole = day >= pLen.getUTCDate();
-      base = whole ? mSum(prev) : mSum(prev, day); lab = whole ? "ко всему " + MONTHS_D[pi] : "к 1–" + day + " " + MONTHS[pi];
-    } else { base = mSum(prev); lab = "ко всему " + MONTHS_D[pi]; }
-  }
-  $("kMonLabel").textContent = "Просмотров учеников за " + MONTHS_N[mi].toLowerCase();
-  $("kMon").innerHTML = t == null ? "—" : fmt(t) + trend(t, base, lab);
-  $("kMonMeta").innerHTML = t == null ? "<span>" + (mm > cur ? "Месяц ещё не начался" : "Данных за этот месяц нет") + "</span>" : "";
-}
 function renderOverview() {
   renderBig();
+  renderWeekBars();
   const { days, keys, latest } = X;
-  const total = keys.reduce((s,k) => s + days[k].students, 0);
-  $("kTotal").textContent = fmt(total);
-  $("kTotalMeta").innerHTML = "";
-  // вчера — последний полный день (выгрузка приходит утром за весь прошлый день); сравнение с тем же днём недели неделей раньше
-  const yk = X.latestDone ? latest : addDays(latest, -1), Y = days[yk], pk = addDays(yk, -7), Pw = days[pk];
-  $("kDayLabel").textContent = "Просмотров учеников за " + longDate(yk);
-  $("kDay").innerHTML = Y ? fmt(Y.students) + trend(Y.students, Pw ? Pw.students : null, "к " + ["понедельнику","вторнику","среде","четвергу","пятнице","субботе","воскресенью"][dow(pk)] + " " + longDate(pk)) : "—";
-  $("kDayMeta").innerHTML = Y ? "" : "<span>За " + longDate(yk) + " данных нет</span>";
   // охват
   const infoLabel = (label, text) => label + " <span class='info' tabindex='0' role='button' aria-label='Пояснение'>i<span class='info-pop' role='tooltip'>" + text + "</span></span>";
   $("reach").innerHTML =
@@ -1028,84 +967,46 @@ function drawHours(el, hrs) {
 }
 
 // ---------- Дни недели ----------
-const mondayOf = k => addDays(k, -dow(k));
-function monthAgoMonday() {
-  const d = pDate(X.latest), y = d.getUTCFullYear(), m = d.getUTCMonth();
-  const first = key(new Date(Date.UTC(y, m, 1))), idx = Math.ceil((d.getUTCDate() + dow(first)) / 7);
-  const pFirst = key(new Date(Date.UTC(y, m - 1, 1))), pLast = key(new Date(Date.UTC(y, m, 0)));
-  let mon = addDays(addDays(pFirst, -dow(pFirst)), 7 * (idx - 1));
-  while (mon > pLast) mon = addDays(mon, -7);
-  return { mon, idx };
-}
-function renderWeekdays() {
-  const start = X.first, todayIdx = dow(X.latest), todayPartial = !X.latestDone;
-  const val = k => k < start || k > X.latest || (k < LIVE_START && !X.days[k]) ? null : (X.days[k] ? X.days[k].students : 0); // до 6.10 дни без данных — пропуск
-  const cw = mondayOf(X.latest), pw = addDays(cw, -7), ma = monthAgoMonday();
-  const week = mon => Array.from({ length: 7 }, (_, i) => addDays(mon, i));
-  const cur = week(cw), prev = week(pw), mago = week(ma.mon);
-  // среднее: по всем полным дням с начала учёта (сегодняшний день не входит, пока не закончился)
-  const sums = Array(7).fill(0); X.fullDays.forEach(k => { sums[dow(k)] += X.days[k].students; });
-  const avg = sums.map((s, i) => X.nWd[i] ? s / X.nWd[i] : null);
-  const holNote = wk => { const ts = [...new Set(wk.flatMap(k => holidaysOn(k).map(h => h.t)))]; return ts.length ? " · каникулы у школ на " + ts.map(t => t === "q" ? "четвертях" : "модулях").join(" и ") : ""; };
-  const series = [
-    { name: "Эта неделя · " + shortDate(cur[0]) + " — " + shortDate(cur[6]) + holNote(cur), color: "var(--s1)", width: 3, vals: cur.map(val), dates: cur },
-    { name: "Прошлая неделя · " + shortDate(prev[0]) + " — " + shortDate(prev[6]) + holNote(prev), color: "var(--s2)", width: 2, vals: prev.map(val), dates: prev },
-    { name: ma.idx + "-я неделя прошлого месяца · " + shortDate(mago[0]) + " — " + shortDate(mago[6]) + holNote(mago), color: "var(--s3)", width: 2, vals: mago.map(val), dates: mago },
-    { name: "В среднем с " + longDate(X.avgFrom), color: "var(--s4)", width: 2, dash: true, vals: avg }
-  ];
-  $("wdCap").textContent = "Просмотры учеников по дням недели. Среднее — по всем полным дням с " + longDate(X.avgFrom) + " (" + WD_SHORT.map((d, i) => d.toLowerCase() + " — " + X.nWd[i]).join(", ") + " дн.)" + (todayPartial ? ". Сегодняшний день (" + shortDate(X.latest) + ") ещё идёт и в среднее не входит" : "") + ".";
-  $("wdLegend").innerHTML = series.map(s => "<span><i class='" + (s.dash ? "dash" : "") + "' style='background:" + s.color + "'></i>" + esc(s.name) + "</span>").join("");
-  drawLines($("wdChart"), series, todayPartial ? todayIdx : -1);
-  renderWdTop();
-}
-function renderWdTop() {
-  const names = { course: c => courseName(c), lesson: l => lessonName(l), school: si => (X.schools[si] || ["—"])[0], region: r => r };
-  const subs = { lesson: l => { const c = lessonCourseOf(l); return c ? courseName(c) : ""; }, school: si => X.regOfSchool[si] || "" };
-  const label = { course: "курсов", lesson: "уроков", school: "школ", region: "регионов" }[wdCat];
-  const src = X.WDS[wdCat], todayIdx = dow(X.latest);
-  const cols = WD_FULL.map((_, d) => X.nWd[d] ? Object.keys(src).filter(e => e !== "?" && e !== "Регион не указан").map(e => [e, src[e][d] / X.nWd[d]]).filter(x => x[1] > 0).sort((a, b) => b[1] - a[1]).slice(0, 10) : []);
-  $("wdTopCap").textContent = "Топ-10 " + label + " по среднему числу просмотров учеников в этот день недели — по всем полным дням с " + longDate(X.avgFrom) + ".";
-  let h = "<table class='wdtab'><thead><tr><th class='idx'>№</th>" + WD_FULL.map((d, i) => "<th" + (i === todayIdx ? " class='today'" : "") + ">" + d + "<span class='sub2'>" + (X.nWd[i] ? "по " + X.nWd[i] + " " + plural(X.nWd[i], "дню", "дням", "дням") : "нет полных дней") + "</span></th>").join("") + "</tr></thead><tbody>";
-  for (let r = 0; r < 10; r++) {
-    h += "<tr><td class='idx'>" + (r + 1) + "</td>" + cols.map((c, d) => { const x = c[r];
-      return "<td" + (d === todayIdx ? " class='today'" : "") + ">" + (x ? esc(names[wdCat](x[0])) + (subs[wdCat] ? "<span class='sub2'>" + esc(subs[wdCat](x[0])) + "</span>" : "") + "<span class='v'>" + fmt1(x[1]) + " в среднем</span>" : "") + "</td>"; }).join("") + "</tr>";
+// «Общая»: по каждому дню недели — в среднем за прошлый месяц, на прошлой и на этой неделе
+function renderWeekBars() {
+  const cw = mondayOf(X.latest), pw = addDays(cw, -7), todayIdx = dow(X.latest), partial = !X.latestDone;
+  const cur = Array.from({ length: 7 }, (_, i) => addDays(cw, i)), prev = Array.from({ length: 7 }, (_, i) => addDays(pw, i));
+  // прошлый месяц — календарный месяц перед текущим (по московскому времени); праздники и неполные дни не берём
+  const lm = pDate(new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 7) + "-01"); lm.setUTCMonth(lm.getUTCMonth() - 1);
+  const pm = lm.toISOString().slice(0, 7);
+  const pmDays = X.keys.filter(k => k.slice(0, 7) === pm && !(k in DAYS_OFF) && (k !== X.latest || X.latestDone));
+  const sums = Array(7).fill(0), cnt = Array(7).fill(0); pmDays.forEach(k => { sums[dow(k)] += X.days[k].students; cnt[dow(k)]++; });
+  const avg = sums.map((v, i) => cnt[i] ? v / cnt[i] : null);
+  const vOf = k => k > X.latest || (k < LIVE_START && !X.days[k]) ? null : (X.days[k] ? X.days[k].students : 0);
+  const prv = prev.map(vOf), wkv = cur.map(vOf);
+  const pmName = MONTHS_P[+pm.slice(5) - 1];
+  $("wbInfo").innerHTML = "<p>Серый — в среднем за этот день недели в " + pmName + " (" + WD_SHORT.map((d, i) => d.toLowerCase() + " — " + cnt[i]).join(", ") + " дн." + (pmDays.some(k => k < LIVE_START) ? "; сентябрь — по отчёту «Моей школы»" : "") + "). Праздничные дни в среднее не входят.</p>" +
+    "<p>Голубой — прошлая неделя, " + shortDate(prev[0]) + " — " + shortDate(prev[6]) + ". Синий — эта неделя, " + shortDate(cur[0]) + " — " + shortDate(cur[6]) + "." + (partial ? " Штриховка — день ещё идёт, данные неполные." : "") + "</p>";
+  $("wbLegend").innerHTML = "<span><i style='background:var(--avg)'></i>в среднем за " + MONTHS_N[+pm.slice(5) - 1].toLowerCase() + "</span><span><i style='background:var(--lastwk)'></i>на прошлой неделе</span><span><i style='background:var(--accent)'></i>на этой неделе</span>" +
+    (partial ? "<span><i style='background:repeating-linear-gradient(135deg,var(--accent) 0 2px,transparent 2px 5px);box-shadow:inset 0 0 0 1px var(--accent)'></i>день ещё идёт</span>" : "");
+  const el = $("wbChart"), W = Math.max(300, Math.round(el.clientWidth || 640)), H = 260, m = { t: 22, r: 8, b: 30, l: 44 };
+  const vals = [...avg, ...prv, ...wkv].filter(v => v != null);
+  const iw = W - m.l - m.r, ih = H - m.t - m.b, sc = niceScale(Math.max(1, ...vals) * 1.08);
+  const y = v => m.t + ih - v / sc.max * ih, gw = iw / 7, gap = Math.min(4, gw * 0.04), bw = Math.min(36, (gw * 0.8 - 2 * gap) / 3), lab = W >= 700;
+  let h = "<svg viewBox='0 0 " + W + " " + H + "' role='img' aria-label='Просмотры по дням недели: в среднем за прошлый месяц, на прошлой и на этой неделе'>" +
+    "<defs><pattern id='wbHatch' width='5' height='5' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><rect width='2' height='5' fill='var(--accent)'/></pattern></defs><g class='grid'>";
+  for (let v = 0; v <= sc.max + 1e-9; v += sc.step) h += "<line x1='" + m.l + "' x2='" + (W - m.r) + "' y1='" + y(v) + "' y2='" + y(v) + "'/><text x='" + (m.l - 8) + "' y='" + (y(v) + 4) + "' text-anchor='end'>" + fmt(Math.round(v)) + "</text>";
+  h += "</g>";
+  const pctTo = (v, base) => base && v != null ? " · " + (v >= base ? "+" : "−") + Math.round(Math.abs(v - base) / base * 100) + "% к среднему" : "";
+  const bar = (x, v, fill, tip, extra) => v == null ? "" : "<rect x='" + x + "' y='" + y(v) + "' width='" + bw + "' height='" + Math.max(0, m.t + ih - y(v)) + "' rx='2' fill='" + fill + "'" + (extra || "") + "><title>" + tip + "</title></rect>" +
+    (lab && v > 0 ? "<text x='" + (x + bw / 2) + "' y='" + (y(v) - 5) + "' text-anchor='middle' style='font-size:10.5px;fill:var(--muted)'>" + fmt(Math.round(v)) + "</text>" : "");
+  for (let i = 0; i < 7; i++) {
+    const cx = m.l + gw * i + gw / 2, x0 = cx - bw * 1.5 - gap, isPart = partial && i === todayIdx;
+    h += bar(x0, avg[i], "var(--avg)", WD_FULL[i] + " · в среднем за " + MONTHS_N[+pm.slice(5) - 1].toLowerCase() + " " + (avg[i] != null ? fmt1(avg[i]) : "—"));
+    h += bar(x0 + bw + gap, prv[i], "var(--lastwk)", WD_FULL[i] + ", " + shortDate(prev[i]) + " · " + fmt(prv[i] || 0) + (prev[i] in DAYS_OFF ? " (" + DAYS_OFF[prev[i]] + ")" : "") + pctTo(prv[i], avg[i]));
+    h += bar(x0 + 2 * (bw + gap), wkv[i], isPart ? "url(#wbHatch)" : "var(--accent)", WD_FULL[i] + ", " + shortDate(cur[i]) + " · " + fmt(wkv[i] || 0) + (isPart ? " (день ещё идёт)" : "") + (cur[i] in DAYS_OFF ? " (" + DAYS_OFF[cur[i]] + ")" : "") + (isPart ? "" : pctTo(wkv[i], avg[i])), isPart ? " stroke='var(--accent)' stroke-width='1'" : "");
+    h += "<text x='" + cx + "' y='" + (H - 8) + "' text-anchor='middle' style='fill:" + (i >= 5 ? "var(--bad)" : "var(--ink)") + "'>" + WD_SHORT[i] + "</text>";
   }
-  $("wdTop").innerHTML = h + "</tbody></table>";
+  h += "<line x1='" + m.l + "' x2='" + (W - m.r) + "' y1='" + (m.t + ih) + "' y2='" + (m.t + ih) + "' style='stroke:var(--faint)'/></svg>";
+  el.innerHTML = h;
 }
-document.querySelectorAll("#wdCat button").forEach(b => b.onclick = () => { wdCat = b.dataset.c; document.querySelectorAll("#wdCat button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); renderWdTop(); });
-function drawLines(el, series, partialIdx) {
-  const W = Math.max(300, Math.round(el.clientWidth || 640)), H = 280, m = { t: 16, r: 16, b: 30, l: 44 };
-  const iw = W - m.l - m.r, ih = H - m.t - m.b;
-  const all = series.flatMap(s => s.vals.filter(v => v != null));
-  const sc0 = niceScale(Math.max(0, ...all)), maxV = sc0.max;
-  const x = i => m.l + iw * (i + 0.5) / 7, y = v => m.t + ih - (v / maxV) * ih;
-  let s = "<svg viewBox='0 0 " + W + " " + H + "' role='img' aria-label='Просмотры по дням недели'><g class='grid'>";
-  for (let v = 0; v <= maxV + 1e-9; v += sc0.step) { const yy = y(v); s += "<line x1='" + m.l + "' x2='" + (W - m.r) + "' y1='" + yy + "' y2='" + yy + "'/><text x='" + (m.l - 8) + "' y='" + (yy + 4) + "' text-anchor='end'>" + fmt(Math.round(v)) + "</text>"; }
-  s += "</g>";
-  WD_SHORT.forEach((d, i) => { s += "<text x='" + x(i) + "' y='" + (H - 8) + "' text-anchor='middle' style='fill:var(--ink)'>" + d + "</text>"; });
-  series.slice().reverse().forEach((se, ri) => {
-    const si = series.length - 1 - ri;
-    let path = "", pen = false;
-    se.vals.forEach((v, i) => { if (v == null) { pen = false; return; } path += (pen ? "L" : "M") + x(i).toFixed(1) + "," + y(v).toFixed(1); pen = true; });
-    if (path) s += "<path d='" + path + "' fill='none' stroke='" + se.color + "' stroke-width='" + se.width + "' stroke-linejoin='round' stroke-linecap='round'" + (se.dash ? " stroke-dasharray='6 5'" : "") + "/>";
-    se.vals.forEach((v, i) => { if (v == null || se.dash) return; const hollow = si === 0 && i === partialIdx;
-      s += "<circle cx='" + x(i) + "' cy='" + y(v) + "' r='" + (si === 0 ? 4.5 : 3.5) + "' fill='" + (hollow ? "var(--surface)" : se.color) + "' stroke='" + (hollow ? se.color : "var(--surface)") + "' stroke-width='2'/>"; });
-  });
-  s += "<line class='xh' x1='0' x2='0' y1='" + m.t + "' y2='" + (m.t + ih) + "' style='stroke:var(--faint)' stroke-dasharray='3 3' visibility='hidden'/>";
-  for (let i = 0; i < 7; i++) s += "<rect class='hit' data-i='" + i + "' x='" + (m.l + iw * i / 7) + "' y='" + m.t + "' width='" + (iw / 7) + "' height='" + ih + "' fill='transparent'/>";
-  s += "</svg><div class='tip' hidden></div>";
-  el.innerHTML = s;
-  const tip = el.querySelector(".tip"), svg = el.querySelector("svg"), xh = svg.querySelector(".xh");
-  el.querySelectorAll(".hit").forEach(r => {
-    const show = () => { const i = +r.dataset.i;
-      tip.innerHTML = "<b>" + WD_FULL[i] + "</b>" + series.map((se, k) => "<br><span style='color:" + se.color + "'>●</span> " + esc(se.name.split(" · ")[0]) + (se.dates ? " (" + shortDate(se.dates[i]) + ")" : "") + ": " + (se.vals[i] == null ? "—" : fmt1(se.vals[i])) + (k === 0 && i === partialIdx ? " · день идёт" : "")).join("");
-      const bb = svg.getBoundingClientRect(), sc = bb.width / W;
-      xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.setAttribute("visibility", "visible");
-      tip.style.left = Math.max(120, Math.min(bb.width - 120, x(i) * sc)) + "px"; tip.style.top = (m.t * sc + 4) + "px"; tip.style.transform = "translate(-50%, 0)"; tip.hidden = false; };
-    r.addEventListener("mouseenter", show); r.addEventListener("click", show);
-    r.addEventListener("mouseleave", () => { tip.hidden = true; xh.setAttribute("visibility", "hidden"); });
-  });
-}
+
+const mondayOf = k => addDays(k, -dow(k));
 
 // ---------- Биллинг ----------
 // Пароль живёт только в памяти страницы: после перезагрузки его нужно ввести снова.
@@ -1211,7 +1112,7 @@ $("billNav").addEventListener("click", e => {
   if (MS[i]) { bill.month = MS[i].month; renderBilling(); } });
 
 // ---------- Вкладки и общий рендер ----------
-const TABS = ["overview", "regions", "courses", "weekdays", "billing"];
+const TABS = ["overview", "regions", "courses", "billing"];
 function readTab() { const h = (location.hash || "").replace("#", ""); return TABS.includes(h) ? h : "overview"; }
 function render() {
   tab = readTab();
@@ -1223,7 +1124,7 @@ function render() {
   const L = X.days[X.latest];
   $("coverage").hidden = true; // строка «Учёт с … по …» больше не показывается; остаётся только для загрузки и ошибок
   $("updData").textContent = "Данные получены " + longDate(X.latest) + " в " + L.lastAt + " мск";
-  ({ overview: renderOverview, regions: renderRegions, courses: renderCourses, weekdays: renderWeekdays, billing: renderBilling })[tab]();
+  ({ overview: renderOverview, regions: renderRegions, courses: renderCourses, billing: renderBilling })[tab]();
 }
 window.addEventListener("hashchange", () => { render(); window.scrollTo(0, 0); });
 let rz, lastW = window.innerWidth; window.addEventListener("resize", () => { if (window.innerWidth === lastW) return; lastW = window.innerWidth; clearTimeout(rz); rz = setTimeout(render, 150); });
