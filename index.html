@@ -86,6 +86,22 @@ h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(22px, 
 .chart svg { width: 100%; height: auto; display: block; overflow: visible; }
 .chart text { fill: var(--muted); font-family: var(--font-body); font-size: 12px; }
 .chart .grid line { stroke: var(--line); }
+.regsearch { font: inherit; font-size: 14px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; width: min(280px, 100%); }
+#regTable tbody tr.zero td { color: var(--faint); }
+.sortable tbody tr.sc-detail > td { background: var(--bg); padding: 14px 14px 18px; cursor: default; }
+.sc-box { display: grid; gap: 12px; min-width: 0; position: sticky; left: 14px; }
+.sc-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; } .sc-head b { font-size: 15px; } .sc-head span { color: var(--muted); font-size: 13px; }
+.sc-sub { font-size: 14px; font-weight: 600; margin: 6px 0 0; }
+.wk { font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; } .wk.up { color: var(--good); } .wk.down { color: var(--bad); } .wk.flat { color: var(--faint); font-weight: 400; }
+.modal { position: fixed; inset: 0; z-index: 50; background: rgba(14, 19, 26, .55); display: flex; justify-content: center; align-items: flex-start; padding: 32px 16px; overflow-y: auto; }
+.modal-box { background: var(--bg); border-radius: 14px; width: min(1120px, 100%); padding: 22px 24px 28px; display: grid; gap: 18px; box-shadow: 0 24px 60px rgba(0,0,0,.3); }
+.modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.modal-head h2 { font-family: var(--font-display); font-weight: 600; font-size: clamp(20px, 2.6vw, 26px); margin: 0 0 4px; }
+.modal-x { font: inherit; font-size: 26px; line-height: 1; width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; flex: none; }
+.modal-x:hover { background: var(--accent-wash); }
+body.modal-open { overflow: hidden; }
+@media (max-width: 480px) { #rmKpi { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } #rmKpi .kpi { padding: 14px; } }
+@media (max-width: 640px) { .modal { padding: 0; } .modal-box { border-radius: 0; min-height: 100%; padding: 16px; } }
 .with-info { display: flex; align-items: center; gap: 8px; margin-bottom: 14px !important; }
 .trend { position: relative; display: inline-block; font-size: .5em; vertical-align: .35em; margin-left: 6px; cursor: help; line-height: 1; }
 .trend.up { color: var(--good); } .trend.down { color: var(--bad); } .trend.flat { color: var(--muted); }
@@ -96,7 +112,7 @@ h1 { font-family: var(--font-display); font-weight: 600; font-size: clamp(22px, 
 .info { text-transform: none; letter-spacing: 0; position: relative; display: inline-grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; border: 1px solid var(--faint); color: var(--faint); font: 600 11px/1 Georgia, serif; font-style: italic; cursor: help; flex: none; }
 .info:hover, .info:focus { color: var(--accent); border-color: var(--accent); outline: none; }
 .info-pop { display: none; position: absolute; left: -8px; top: calc(100% + 8px); z-index: 20; width: min(420px, 80vw); background: var(--ink); color: var(--bg); font: 400 13px/1.45 var(--font-body); font-style: normal; padding: 10px 12px; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.18); }
-.info-pop p { margin: 0; } .info-pop p + p { margin-top: 6px; }
+.info-pop p { margin: 0; } .info-pop.info-wide { width: min(560px, 86vw); } .info-pop .rules { margin-top: 6px; font-size: 13px; } .info-pop .rules li::marker { color: currentColor; } .info-pop p + p { margin-top: 6px; }
 .info:hover .info-pop, .info:focus .info-pop { display: block; }
 .tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 13px; padding: 7px 10px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, -100%); }
 .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 8px; }
@@ -233,7 +249,6 @@ td.peak b { font-weight: 600; }
     <a href="#regions" data-tab="regions">Регионы</a>
     <a href="#schools" data-tab="schools">Школы</a>
     <a href="#courses" data-tab="courses">Курсы</a>
-    <a href="#lessons" data-tab="lessons">Уроки</a>
     <a href="#weekdays" data-tab="weekdays">Дни недели</a>
     <a href="#billing" data-tab="billing">Биллинг</a>
   </nav>
@@ -280,13 +295,11 @@ td.peak b { font-weight: 600; }
 
     <div class="grid2">
       <section class="panel">
-        <div class="panel-head"><h2>Топ-5 регионов по числу просмотров</h2><a href="#regions">Все регионы →</a></div>
-        <p class="cap" id="topAllCap"></p>
+        <div class="panel-head"><h2 class="with-info" style="margin:0 0 12px !important">Топ-5 регионов по числу просмотров <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="topAllCap"></span></span></h2><a href="#regions">Все регионы →</a></div>
         <ol class="rank" id="topAll"></ol>
       </section>
       <section class="panel">
-        <div class="panel-head"><h2>Топ-5 курсов по числу просмотров</h2><a href="#courses">Все курсы →</a></div>
-        <p class="cap" id="topCoursesCap"></p>
+        <div class="panel-head"><h2 class="with-info" style="margin:0 0 12px !important">Топ-5 курсов по числу просмотров <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="topCoursesCap"></span></span></h2><a href="#courses">Все курсы →</a></div>
         <ol class="rank" id="topCourses"></ol>
       </section>
     </div>
@@ -295,36 +308,39 @@ td.peak b { font-weight: 600; }
   <!-- ===== Регионы ===== -->
   <section class="page" id="p-regions" hidden>
     <section class="panel">
-      <h2 id="unreachedTitle">Не охваченные регионы</h2>
-      <p class="cap" id="unreachedCap"></p>
-      <div class="chips" id="unreached"></div>
-    </section>
-    <div class="grid2">
-      <section class="panel">
-        <h2>Сильнее всего выросли</h2>
-        <p class="cap" id="regUpCap"></p>
-        <ol class="rank" id="regUp"></ol>
-      </section>
-      <section class="panel">
-        <h2>Сильнее всего упали</h2>
-        <p class="cap" id="regDownCap"></p>
-        <ol class="rank" id="regDown"></ol>
-      </section>
-    </div>
-    <section class="panel" id="regDetail" hidden></section>
-    <section class="panel">
-      <h2>Все регионы</h2>
-      <p class="cap" id="regTableCap"></p>
+      <div class="panel-head" style="margin-bottom:12px"><h2 class="with-info" style="margin:0 !important">Все регионы <span class="info" tabindex="0" role="button" aria-label="Пояснение к таблице">i<span class="info-pop" role="tooltip" id="regTableCap"></span></span></h2><input type="search" id="regSearch" class="regsearch" placeholder="Найти регион" aria-label="Найти регион"></div>
       <div class="scroll" id="regTable"></div>
     </section>
   </section>
+
+  <!-- Поп-ап региона -->
+  <div class="modal" id="regModal" hidden role="dialog" aria-modal="true" aria-labelledby="rmTitle">
+    <div class="modal-box">
+      <div class="modal-head">
+        <div><h2 id="rmTitle">Регион</h2><p class="cap" id="rmCap"></p></div>
+        <button type="button" class="modal-x" id="rmClose" aria-label="Закрыть">×</button>
+      </div>
+      <div class="grid4" id="rmKpi"></div>
+      <section class="panel">
+        <h2 class="with-info">Просмотры учеников по дням <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip"><p>Даты каникул 2026/27: по четвертям — рекомендации Минпросвещения, по модульной системе 5+1 — типовой график. В регионах и школах даты могут отличаться.</p><p>Сентябрь — по отчёту «Моей школы» (пары «ученик — урок» по дате первого просмотра).</p></span></span></h2>
+        <div class="mbar" id="rmNav" role="group" aria-label="Месяц на графике">
+          <button type="button" class="mbtn" data-d="-1" aria-label="Предыдущий месяц">‹</button>
+          <div class="mtabs" id="rmMonths"></div>
+          <button type="button" class="mbtn" data-d="1" aria-label="Следующий месяц">›</button>
+        </div>
+        <div class="big" id="rmBig"></div>
+        <div class="legend"><span><i style="background:var(--accent)"></i>за день</span><span><i style="background:var(--accent-soft)"></i>день ещё идёт</span><span><i style="background:var(--s1);height:3px;vertical-align:3px"></i>всего нарастающим итогом</span><span><i style="background:var(--hq);box-shadow:inset 0 0 0 1px var(--hq-bar)"></i>четвертные каникулы</span><span><i style="background:var(--hm);box-shadow:inset 0 0 0 1px var(--hm-bar)"></i>модульные каникулы</span></div>
+      </section>
+      <section class="panel"><h2 class="with-info">Топ курсов <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip">Просмотры учеников региона за всё время наблюдения.</span></span></h2><ol class="rank" id="rmCourses"></ol></section>
+      <section class="panel"><h2 class="with-info"><span id="rmSchTitle">Школы региона</span> <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="rmSchCap"></span></span></h2><div class="scroll" id="rmSchools"></div></section>
+    </div>
+  </div>
 
   <!-- ===== Школы ===== -->
   <section class="page" id="p-schools" hidden>
     <div class="grid4" id="schKpi"></div>
     <section class="panel">
-      <h2>Все школы</h2>
-      <p class="cap" id="schTableCap"></p>
+      <h2 class="with-info">Все школы <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="schTableCap"></span></span></h2>
       <div class="filters">
         <select id="schRegion" aria-label="Регион"><option value="">Все регионы</option></select>
         <input id="schSearch" type="search" placeholder="Поиск по названию школы" aria-label="Поиск по названию школы">
@@ -333,13 +349,11 @@ td.peak b { font-weight: 600; }
     </section>
     <div class="grid2">
       <section class="panel">
-        <h2>Новые школы</h2>
-        <p class="cap" id="schNewCap"></p>
+        <h2 class="with-info">Новые школы <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="schNewCap"></span></span></h2>
         <ul class="list-plain" id="schNew"></ul>
       </section>
       <section class="panel">
-        <h2>Пропавшие школы</h2>
-        <p class="cap" id="schLostCap"></p>
+        <h2 class="with-info">Пропавшие школы <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="schLostCap"></span></span></h2>
         <ul class="list-plain" id="schLost"></ul>
       </section>
     </div>
@@ -348,38 +362,24 @@ td.peak b { font-weight: 600; }
   <!-- ===== Курсы ===== -->
   <section class="page" id="p-courses" hidden>
     <section class="panel">
-      <h2>Все курсы</h2>
-      <p class="cap" id="crsCap"></p>
+      <h2 class="with-info">Все курсы <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="crsCap"></span></span></h2>
       <div class="scroll" id="crsTable"></div>
     </section>
   </section>
 
   <!-- ===== Уроки ===== -->
-  <section class="page" id="p-lessons" hidden>
-    <section class="panel">
-      <h2>Все уроки</h2>
-      <p class="cap" id="lesCap"></p>
-      <div class="filters">
-        <select id="lesCourse" aria-label="Курс"><option value="">Все курсы</option></select>
-        <input id="lesSearch" type="search" placeholder="Поиск по названию урока" aria-label="Поиск по названию урока">
-      </div>
-      <div class="scroll" id="lesTable"></div>
-    </section>
-  </section>
 
   <!-- ===== Дни недели ===== -->
   <section class="page" id="p-weekdays" hidden>
     <section class="panel lines">
-      <h2>Текущая неделя в сравнении</h2>
-      <p class="cap" id="wdCap"></p>
+      <h2 class="with-info">Текущая неделя в сравнении <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="wdCap"></span></span></h2>
       <div class="chart" id="wdChart"></div>
       <div class="legend" id="wdLegend"></div>
     </section>
     <section class="panel">
       <div class="chart-head">
         <div>
-          <h2>Топ-10 по дням недели</h2>
-          <p class="cap" id="wdTopCap"></p>
+          <h2 class="with-info">Топ-10 по дням недели <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="wdTopCap"></span></span></h2>
         </div>
         <div class="seg" role="group" aria-label="Что показать" id="wdCat">
           <button type="button" data-c="course" aria-pressed="true">Курсы</button>
@@ -410,19 +410,13 @@ td.peak b { font-weight: 600; }
         <button type="button" class="mbtn" data-d="1" aria-label="Следующий месяц">›</button>
       </div>
       <div style="margin-bottom:12px">
-        <h2 style="font-size:17px;margin:0" id="billTitle">Потенциальный заработок</h2>
-        <p class="sub" id="billCap" style="margin-top:2px"></p>
+        <h2 class="with-info" style="font-size:17px;margin:0 !important"><span id="billTitle">Потенциальный заработок</span> <span class="info" tabindex="0" role="button" aria-label="Как считается">i<span class="info-pop info-wide" role="tooltip"><p id="billCap"></p><p>Это прогноз по выгрузке Metabase, а не начисление: окончательно засчитывает «Моя школа» по своим данным.</p><p><b>Какие уроки попадают в расчёт:</b></p><ul class="rules" id="billRules"></ul></span></span></h2>
       </div>
       <div class="grid3">
         <section class="panel kpi bill"><div class="label">1–6 классы</div><div class="value" id="bLow">—</div><div class="meta" id="bLowMeta"></div></section>
         <section class="panel kpi bill"><div class="label">7–11 классы</div><div class="value" id="bHigh">—</div><div class="meta" id="bHighMeta"></div></section>
         <section class="panel kpi bill bill-total"><div class="label" id="bTotalLabel">Итого</div><div class="value" id="bTotal">—</div><div class="meta" id="bTotalMeta"></div></section>
       </div>
-      <section class="panel" style="margin-top:20px">
-        <h2>Какие уроки попадают в расчёт</h2>
-        <p class="cap">Это прогноз по выгрузке Metabase, а не начисление: окончательно засчитывает «Моя школа» по своим данным.</p>
-        <ul class="rules" id="billRules"></ul>
-      </section>
     </div>
   </section>
 </div>
@@ -667,30 +661,32 @@ function stepScale(v, base) {
   return { max: Math.max(step, Math.ceil(v * 1.06 / step) * step), step };
 }
 
-function renderBig() {
-  const el = $("big");
+/** Накопительный график + столбики по дням за один месяц. o: { el, months, nav, plotId, month, val(k) } → выбранный месяц */
+function comboChart(o) {
+  const el = o.el; let bigMonth = o.month;
   const mFirst = X.first.slice(0, 7), mLast = CHART_END.slice(0, 7);
-  if (!bigMonth) bigMonth = X.latest.slice(0, 7);
+  if (!bigMonth) bigMonth = (X.latestDone ? X.latest : addDays(X.latest, -1)).slice(0, 7); // по умолчанию — месяц последнего полного дня
   bigMonth = bigMonth < mFirst ? mFirst : bigMonth > mLast ? mLast : bigMonth;
   const mStart = bigMonth + "-01", dates = [];
   const gap = k => F && k > F.to && k < LIVE_START; // дни между отчётом за сентябрь и началом учёта — данных нет, на графике их не показываем
   for (let k = mStart; k.slice(0, 7) === bigMonth; k = addDays(k, 1)) if (!gap(k)) dates.push(k);
   // накопление — с начала учёта, чтобы линия продолжалась из месяца в месяц
-  let before = 0; for (const k of X.keys) if (k < mStart) before += X.days[k].students;
+  let before = 0; for (const k of X.keys) if (k < mStart) before += o.val(k);
   const fitW = Math.max(0, el.clientWidth - 48 - 8);
   const step = Math.max(24, Math.min(40, Math.floor(fitW / dates.length))), bw = Math.round(step * 0.68), W = dates.length * step + 8;
   const RIB = 6, H1 = 180, GAP = 34, H2 = 150, LBL = 48;
   const T1 = RIB + 18, B1 = T1 + H1, T2 = B1 + GAP, B2 = T2 + H2, H = B2 + LBL;
-  let cum = before; const pts = dates.map(k => { const d = X.days[k]; const v = k > X.latest || k < X.first ? null : (d ? d.students : 0); if (v != null) cum += v; return { k, v, cum: v == null ? null : cum }; });
+  let cum = before; const pts = dates.map(k => { const d = X.days[k]; const v = k > X.latest || k < X.first ? null : (d ? o.val(k) : 0); if (v != null) cum += v; return { k, v, cum: v == null ? null : cum }; });
   const mTotal = pts.reduce((t, p) => t + (p.v || 0), 0);
   const months = []; for (let mm = mFirst; mm <= mLast; mm = (d => (d.setUTCMonth(d.getUTCMonth() + 1), d.toISOString().slice(0, 7)))(pDate(mm + "-01"))) months.push(mm);
-  const mSum = mm => { let t = 0, any = false; for (const k of X.keys) if (k.slice(0, 7) === mm) { t += X.days[k].students; any = true; } return any ? t : null; };
-  $("bigMonths").innerHTML = months.map(mm => { const t = mSum(mm);
+  const mSum = mm => { let t = 0, any = false; for (const k of X.keys) if (k.slice(0, 7) === mm) { t += o.val(k); any = true; } return any ? t : null; };
+  o.months.innerHTML = months.map(mm => { const t = mSum(mm);
     return "<button type='button' class='mtab" + (t == null ? " empty" : "") + "' data-m='" + mm + "' aria-pressed='" + (mm === bigMonth) + "'><b>" + MONTHS_N[+mm.slice(5) - 1] + "</b><span>" + (t == null ? "нет данных" : fmt(t) + " " + plural(t, "просмотр", "просмотра", "просмотров")) + "</span></button>"; }).join("");
-  const act = $("bigMonths").querySelector("[aria-pressed='true']"); if (act) act.scrollIntoView({ block: "nearest", inline: "nearest" });
-  $("bigNav").querySelector("[data-d='-1']").disabled = bigMonth <= mFirst;
-  $("bigNav").querySelector("[data-d='1']").disabled = bigMonth >= mLast;
-  const s1 = stepScale(Math.max(1, before, ...pts.map(p => p.cum || 0))), s2 = niceScale(Math.max(1, ...pts.map(p => p.v || 0)) * 1.08);
+  const act = o.months.querySelector("[aria-pressed='true']"); if (act) act.scrollIntoView({ block: "nearest", inline: "nearest" });
+  o.nav.querySelector("[data-d='-1']").disabled = bigMonth <= mFirst;
+  o.nav.querySelector("[data-d='1']").disabled = bigMonth >= mLast;
+  const cMax = Math.max(1, before, ...pts.map(p => p.cum || 0));
+  const s1 = cMax >= 20000 ? stepScale(cMax) : niceScale(cMax * 1.1), s2 = niceScale(Math.max(1, ...pts.map(p => p.v || 0)) * 1.08);
   const y1 = v => B1 - (v / s1.max) * H1, y2 = v => B2 - (v / s2.max) * H2;
   const x = i => 4 + step * i + step / 2;
   // ось (не прокручивается)
@@ -732,8 +728,8 @@ function renderBig() {
   });
   pts.forEach((p, i) => { s += "<rect class='hit' data-i='" + i + "' x='" + (x(i) - step / 2) + "' y='0' width='" + step + "' height='" + B2 + "' fill='transparent'/>"; });
   s += "</svg><div class='tip' hidden></div>";
-  el.innerHTML = "<div class='axis'>" + a + "</div><div class='plot' id='bigPlot'>" + s + "</div>";
-  const plot = $("bigPlot"), tip = plot.querySelector(".tip");
+  el.innerHTML = "<div class='axis'>" + a + "</div><div class='plot' id='" + o.plotId + "'>" + s + "</div>";
+  const plot = $(o.plotId), tip = plot.querySelector(".tip");
   plot.querySelectorAll(".hit").forEach(r => {
     const show = () => { const p = pts[+r.dataset.i], hs = holidaysOn(p.k);
       tip.innerHTML = "<b>" + longDate(p.k) + ", " + WD_FULL[dow(p.k)].toLowerCase() + "</b><br>" + (p.v == null ? "дата ещё не наступила" : "за день: " + fmt(p.v) + (isPartialDay(p.k) ? " (день ещё идёт)" : "") + "<br>всего на конец дня: " + fmt(p.cum)) +
@@ -743,6 +739,11 @@ function renderBig() {
     r.addEventListener("mouseleave", () => { tip.hidden = true; });
   });
   plot.scrollLeft = li >= 0 ? Math.max(0, x(li) - plot.clientWidth * 0.75) : 0;
+  return bigMonth;
+}
+
+function renderBig() {
+  bigMonth = comboChart({ el: $("big"), months: $("bigMonths"), nav: $("bigNav"), plotId: "bigPlot", month: bigMonth, val: k => X.days[k].students });
   $("bigInfo").innerHTML = (F ? "<p>Сентябрь — по отчёту «Моей школы»: пары «ученик — урок» по дате первого просмотра. Дни с " + longDate(addDays(F.to, 1)) + " по " + longDate(addDays(LIVE_START, -1)) + " не показаны: данных за них нет.</p>" : "") +
     "<p>Даты каникул 2026/27: по четвертям — рекомендации Минпросвещения, по модульной системе 5+1 — типовой график. В регионах и школах даты могут отличаться.</p>";
   renderMonthKpi();
@@ -803,56 +804,130 @@ function renderOverview() {
 }
 
 // ---------- Регионы ----------
-function regionRows() {
-  const sAll = {};
-  for (const si in X.E.school) add(sAll, X.regOfSchool[si], 1);
-  return Object.keys(X.E.region).filter(n => n !== "Регион не указан").map(n => ({ id: n, name: n, total: X.E.region[n] || 0, week: X.W7.region[n] || 0, prev: X.P7.region[n] || 0,
-    diff: X.hasP7 ? (X.W7.region[n] || 0) - (X.P7.region[n] || 0) : null, schools: sAll[n] || 0 }));
+// По каждому региону: просмотры по дням, курсы, уроки, школы (считается один раз на набор данных)
+let RG = null;
+function regionStats() {
+  if (RG && RG.X === X) return RG;
+  const day = {}, course = {}, lesson = {}, school = {}, sday = {}, scourse = {};
+  for (const k of X.keys) {
+    const r = X.days[k].regions || {};
+    for (const c in r) { const n = regionName(c); (day[n] || (day[n] = {}))[k] = ((day[n] || {})[k] || 0) + r[c]; }
+    const m = J.ls[k] || {};
+    for (const pk in m) {
+      const p = pk.indexOf("|"), lid = pk.slice(0, p), si = +pk.slice(p + 1), n = X.regOfSchool[si] || "Регион не указан", v = m[pk];
+      add(course[n] || (course[n] = {}), lessonCourseOf(lid) || "?", v); add(lesson[n] || (lesson[n] = {}), lid, v);
+      const sc = (school[n] || (school[n] = {}))[si] || (school[n][si] = { total: 0, week: 0, prev: 0, first: k, last: k });
+      sc.total += v; if (k >= X.w7From && k <= X.w7To) sc.week += v; if (k >= X.p7From && k <= X.p7To) sc.prev += v; sc.last = k;
+      add(sday[si] || (sday[si] = {}), k, v); add(scourse[si] || (scourse[si] = {}), lessonCourseOf(lid) || "?", v);
+    }
+  }
+  return (RG = { X, day, course, lesson, school, sday, scourse });
 }
+function regionRows() {
+  const G = regionStats(), names = [...new Set(SUBJECT_CODES.map(c => REGIONS[c]))];
+  return names.map(n => { const sc = G.school[n] || {};
+    return { id: n, name: n, total: X.E.region[n] || 0, week: X.W7.region[n] || 0, prev: X.P7.region[n] || 0,
+      diff: X.hasP7 ? (X.W7.region[n] || 0) - (X.P7.region[n] || 0) : null, schools: Object.keys(sc).length,
+      perSchool: Object.keys(sc).length ? (X.E.region[n] || 0) / Object.keys(sc).length : null,
+      pct: !X.hasP7 ? null : (X.P7.region[n] || 0) ? ((X.W7.region[n] || 0) - X.P7.region[n]) / X.P7.region[n] * 100 : ((X.W7.region[n] || 0) ? Infinity : null),
+      active: Object.values(sc).filter(x => x.week > 0).length }; });
+}
+// Изменение за 7 дней: ▲ рост / ▼ падение и на сколько процентов
+const wk = (r, ok) => {
+  if (!ok || r.pct == null) return "<span class='wk flat'>—</span>";
+  if (r.pct === Infinity) return "<span class='wk up'>▲ новый</span>";
+  const p = Math.round(r.pct), cls = p > 0 ? "up" : p < 0 ? "down" : "flat";
+  return "<span class='wk " + cls + "'>" + (p > 0 ? "▲ +" + p : p < 0 ? "▼ −" + Math.abs(p) : "= 0") + "%</span>";
+};
 function renderRegions() {
-  const rows = regionRows(), ok = X.hasP7;
-  const reached = new Set(rows.map(r => r.name));
-  const un = [...new Set(SUBJECT_CODES.map(c => REGIONS[c]))].filter(n => !reached.has(n)).sort((a, b) => a.localeCompare(b, "ru"));
-  $("unreachedTitle").textContent = "Не охваченные регионы · " + un.length + " из 89";
-  $("unreachedCap").textContent = "Субъекты РФ, из которых с " + longDate(X.first) + " не было ни одного просмотра учеников";
-  $("unreached").innerHTML = un.length ? un.map(n => "<span>" + esc(n) + "</span>").join("") : "<span>Все регионы охвачены</span>";
-  const ups = rows.filter(r => r.diff > 0).sort((a, b) => b.diff - a.diff).map(r => [r.name, r.diff, fmt(r.prev) + " → " + fmt(r.week)]);
-  const downs = rows.filter(r => r.diff < 0).sort((a, b) => a.diff - b.diff).map(r => [r.name, r.diff, fmt(r.prev) + " → " + fmt(r.week)]);
-  $("regUpCap").textContent = $("regDownCap").textContent = "7 дней " + w7Label() + " к 7 дням " + p7Label();
-  const wait = "Сравнение появится, когда наберутся 14 полных дней (с " + longDate(addDays(X.first, 14)) + ")";
-  renderRank("regUp", ok ? ups : [], 0, ok ? "Роста нет" : wait);
-  renderRank("regDown", ok ? downs : [], 0, ok ? "Падения нет" : wait);
-  $("regTableCap").textContent = "Номер строки показывает, сколько регионов охвачено. Нажмите на регион, чтобы увидеть динамику и школы. 7 дней — " + w7Label() + ".";
+  const ok = X.hasP7, q = ($("regSearch").value || "").trim().toLowerCase();
+  const rows = regionRows(), shown = q ? rows.filter(r => r.name.toLowerCase().includes(q)) : rows;
+  $("regTableCap").innerHTML = "<p>Все 89 субъектов, включая те, где просмотров учеников пока нет.</p><p>Просмотров на школу — все просмотры учеников региона, делённые на число школ, где их открывали хотя бы раз.</p><p>7 дней — " + w7Label() + "; треугольник — изменение к предыдущим 7 дням (" + p7Label() + ").</p><p>Нажмите на заголовок столбца, чтобы отсортировать, на регион — чтобы открыть подробности.</p>";
   const st = ui.reg;
   sortTable($("regTable"), [
     { k: "name", label: "Регион" },
-    { k: "total", label: "Всего", num: true },
+    { k: "total", label: "Всего просмотров", num: true },
+    { k: "schools", label: "Всего школ", num: true },
+    { k: "perSchool", label: "Просмотров на школу", num: true, html: r => r.perSchool == null ? "<span class='wk flat'>—</span>" : r.perSchool.toLocaleString("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) },
     { k: "week", label: "За 7 дней", num: true },
-    { k: "diff", label: "Изм. к пред. 7 дням", num: true, html: r => chg(r.week, r.prev, ok) },
-    { k: "schools", label: "Школ", num: true }
-  ], rows, st, { numbered: true, rerender: renderRegions, onRow: id => { st.sel = st.sel === id ? null : id; renderRegions(); if (st.sel) $("regDetail").scrollIntoView({ behavior: "smooth", block: "start" }); } });
-  renderRegionDetail();
+    { k: "pct", label: "К пред. 7 дням", num: true, html: r => wk(r, ok) }
+  ], shown, st, { numbered: true, rerender: renderRegions, onRow: id => openRegion(id) });
+  $("regTable").querySelectorAll("tbody tr").forEach(tr => { const r = rows.find(x => x.id === tr.dataset.id); if (r && !r.total) tr.classList.add("zero"); });
 }
-function renderRegionDetail() {
-  const el = $("regDetail"), n = ui.reg.sel;
-  if (!n || !(n in X.E.region)) { el.hidden = true; return; }
-  el.hidden = false;
-  const pts = [];
-  for (let i = 29; i >= 0; i--) { const k = addDays(X.latest, -i); if (k < X.first) continue; const d = X.days[k]; let v = 0;
-    if (d) { const r = d.regions || {}; for (const c in r) if (regionName(c) === n) v += r[c]; }
-    pts.push({ k, v, partial: isPartialDay(k) }); }
-  const sch = Object.keys(X.E.school).filter(si => X.regOfSchool[si] === n).map(si => ({ id: si, name: X.schools[si][0], total: X.E.school[si] || 0, week: X.W7.school[si] || 0, first: X.sFirst[si] }));
-  el.innerHTML = "<div class='panel-head'><div><h3 class='detail-title'>" + esc(n) + "</h3><p class='cap'>Всего " + fmt(X.E.region[n]) + " просмотров, за 7 дней " + fmt(X.W7.region[n] || 0) + "</p></div><button type='button' class='linkbtn' id='regClose'>Закрыть</button></div>" +
-    "<div class='chart' id='regChart'></div><h2 style='margin-top:18px'>Школы региона · " + fmt(sch.length) + "</h2><div class='scroll' id='regSchools'></div>";
-  drawBars($("regChart"), pts);
-  const st = ui.regSch || (ui.regSch = { sort: "total", dir: -1, limit: 20 });
-  const draw = () => sortTable($("regSchools"), [
+$("regSearch").addEventListener("input", () => { if (X) renderRegions(); });
+
+let rmName = null, rmMonth = null;
+function openRegion(n) { rmName = n; rmMonth = null; $("regModal").hidden = false; document.body.classList.add("modal-open"); renderRegionModal(); $("regModal").scrollTop = 0; $("rmClose").focus(); }
+function closeRegion() { rmName = null; $("regModal").hidden = true; document.body.classList.remove("modal-open"); }
+$("rmClose").addEventListener("click", closeRegion);
+$("regModal").addEventListener("click", e => { if (e.target === $("regModal")) closeRegion(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && rmName) closeRegion(); });
+$("rmNav").addEventListener("click", e => { if (!X || !rmName) return;
+  const t = e.target.closest("button[data-m]"); if (t) { rmMonth = t.dataset.m; renderRegionModal(); return; }
+  const b = e.target.closest("button[data-d]"); if (!b || b.disabled) return;
+  const d = pDate(rmMonth + "-01"); d.setUTCMonth(d.getUTCMonth() + +b.dataset.d); rmMonth = d.toISOString().slice(0, 7); renderRegionModal(); });
+function renderRegionModal() {
+  if (!rmName) return;
+  const n = rmName, G = regionStats(), dv = G.day[n] || {}, val = k => dv[k] || 0;
+  const rows = regionRows().sort((a, b) => b.total - a.total), place = rows.findIndex(r => r.name === n) + 1, total = X.E.region[n] || 0;
+  $("rmTitle").textContent = n;
+  $("rmCap").textContent = total ? place + "-е место из 89 по числу просмотров учеников · " + pct1(total, X.keys.reduce((t, k) => t + X.days[k].students, 0)) + " всех просмотров" : "Просмотров учеников пока нет";
+  rmMonth = comboChart({ el: $("rmBig"), months: $("rmMonths"), nav: $("rmNav"), plotId: "rmPlot", month: rmMonth, val });
+  // показатели
+  const mSum = (mm, to) => { let t = 0; for (const k of X.keys) if (k.slice(0, 7) === mm && (!to || +k.slice(8) <= to)) t += val(k); return t; };
+  const cur = X.latest.slice(0, 7), mi = +rmMonth.slice(5) - 1, prev = (d => (d.setUTCMonth(d.getUTCMonth() - 1), d.toISOString().slice(0, 7)))(pDate(rmMonth + "-01")), pi = +prev.slice(5) - 1;
+  let mBase = null, mLab = "ко всему " + MONTHS_D[pi];
+  if (rmMonth === cur) { const day = +X.latest.slice(8), pl = pDate(rmMonth + "-01"); pl.setUTCDate(0); const whole = day >= pl.getUTCDate(); mBase = whole ? mSum(prev) : mSum(prev, day); if (!whole) mLab = "к 1–" + day + " " + MONTHS[pi]; }
+  else if (rmMonth < cur) mBase = mSum(prev);
+  const mT = rmMonth <= cur ? mSum(rmMonth) : null;
+  const yk = X.latestDone ? X.latest : addDays(X.latest, -1), pk = addDays(yk, -7);
+  const sc = G.school[n] || {}, act = Object.values(sc).filter(x => x.week > 0).length;
+  const tile = (label, value, meta) => "<section class='panel kpi small'><div class='label'>" + label + "</div><div class='value'>" + value + "</div>" + (meta ? "<div class='meta'><span>" + meta + "</span></div>" : "") + "</section>";
+  $("rmKpi").innerHTML =
+    tile("Всего просмотров учеников", fmt(total)) +
+    tile("За " + MONTHS_N[mi].toLowerCase(), mT == null ? "—" : fmt(mT) + (mBase ? trend(mT, mBase, mLab) : "")) +
+    tile("За " + longDate(yk), fmt(val(yk)) + (X.days[pk] ? trend(val(yk), val(pk), "к " + ["понедельнику","вторнику","среде","четвергу","пятнице","субботе","воскресенью"][dow(pk)] + " " + longDate(pk)) : "")) +
+    tile("Школ", fmt(Object.keys(sc).length), fmt(act) + " " + plural(act, "активна", "активны", "активны") + " за 7 дней");
+  // курсы и уроки
+  const cs = G.course[n] || {};
+  renderRank("rmCourses", sortEntries(cs).slice(0, 10).map(([c, v]) => [courseName(c), v]), sumVals(cs), "Просмотров нет");
+  // школы: нажатие на строку раскрывает подробности школы прямо под ней
+  const srows = Object.entries(sc).map(([si, x]) => ({ id: si, name: X.schools[si][0], total: x.total, week: x.week, prev: x.prev,
+    pct: !X.hasP7 ? null : x.prev ? (x.week - x.prev) / x.prev * 100 : (x.week ? Infinity : null) }));
+  $("rmSchTitle").textContent = "Школы региона · " + fmt(srows.length);
+  $("rmSchCap").innerHTML = "<p>7 дней — " + w7Label() + "; треугольник — изменение к предыдущим 7 дням (" + p7Label() + ").</p><p>Нажмите на школу, чтобы раскрыть график и курсы, ещё раз — чтобы свернуть. На заголовок столбца — чтобы отсортировать.</p>";
+  const st = ui.regSch || (ui.regSch = { sort: "total", dir: -1, limit: 30 });
+  if (st.sel && !sc[st.sel]) st.sel = null;
+  const cols = [
     { k: "name", label: "Школа" }, { k: "total", label: "Всего", num: true }, { k: "week", label: "За 7 дней", num: true },
-    { k: "first", label: "Первый просмотр", cls: "r", html: r => shortDate(r.first) }
-  ], sch, st, { numbered: true, rerender: draw });
+    { k: "pct", label: "К пред. 7 дням", num: true, html: r => wk(r, X.hasP7) }
+  ];
+  const draw = () => {
+    sortTable($("rmSchools"), cols, srows, st, { numbered: true, rerender: draw, onRow: id => { st.sel = st.sel === id ? null : id; scMonth = null; draw(); } });
+    if (!st.sel) return;
+    const tr = [...$("rmSchools").querySelectorAll("tbody tr")].find(t => t.dataset.id === st.sel); if (!tr) return;
+    const d = document.createElement("tr"); d.className = "sc-detail";
+    const x = sc[st.sel];
+    d.innerHTML = "<td colspan='" + (cols.length + 1) + "'><div class='sc-box'>" +
+      "<div class='sc-head'><b>" + esc(X.schools[st.sel][0]) + "</b><span>всего " + fmt(x.total) + " · за 7 дней " + fmt(x.week) + " · первый просмотр " + shortDate(x.first) + ", последний " + shortDate(x.last) + "</span></div>" +
+      "<div class='mbar' id='scNav' role='group' aria-label='Месяц на графике школы'><button type='button' class='mbtn' data-d='-1' aria-label='Предыдущий месяц'>‹</button><div class='mtabs' id='scMonths'></div><button type='button' class='mbtn' data-d='1' aria-label='Следующий месяц'>›</button></div>" +
+      "<div class='big' id='scBig'></div>" +
+      "<h3 class='sc-sub'>Самые просматриваемые курсы</h3><ol class='rank' id='scCourses'></ol></div></td>";
+    tr.after(d);
+    // на узком экране таблица прокручивается вбок — блок подробностей держим в видимой ширине
+    const box = d.querySelector(".sc-box"); box.style.width = Math.max(260, $("rmSchools").clientWidth - 28) + "px";
+    const sv = G.sday[st.sel] || {};
+    scMonth = comboChart({ el: $("scBig"), months: $("scMonths"), nav: $("scNav"), plotId: "scPlot", month: scMonth, val: k => sv[k] || 0 });
+    const scs = G.scourse[st.sel] || {};
+    renderRank("scCourses", sortEntries(scs).map(([c, v]) => [courseName(c), v]), sumVals(scs), "Просмотров нет");
+    $("scNav").onclick = e => {
+      const t = e.target.closest("button[data-m]"); if (t) { scMonth = t.dataset.m; draw(); return; }
+      const b = e.target.closest("button[data-d]"); if (!b || b.disabled) return;
+      const dd = pDate(scMonth + "-01"); dd.setUTCMonth(dd.getUTCMonth() + +b.dataset.d); scMonth = dd.toISOString().slice(0, 7); draw(); };
+  };
   draw();
-  $("regClose").onclick = () => { ui.reg.sel = null; renderRegions(); };
 }
+let scMonth = null;
 
 // ---------- Школы ----------
 function renderSchools() {
@@ -904,30 +979,6 @@ function renderCourses() {
     { k: "peakAvg", label: "Пиковый день и кто его даёт", cls: "peak", html: r => peakHtml(r.peak) }
   ], rows.map(r => Object.assign(r, { peakAvg: r.peak ? r.peak.avg : 0 })), ui.crs, { numbered: true, allLabel: "Показать все курсы", rerender: renderCourses });
 }
-function renderLessons() {
-  const ok = X.hasP7;
-  // только уроки из каталога МШ: просмотры убранных уроков не оплачиваются и в статистику не входят
-  const cokSet = C.cok ? new Set(C.cok.map(String)) : null;
-  const ids = new Set(Object.keys(X.E.lesson).filter(l => !cokSet || cokSet.has(l))); if (C.cok) C.cok.forEach(l => ids.add(String(l)));
-  ids.delete("?");
-  const all = [...ids].map(l => { const c = lessonCourseOf(l); return { id: l, name: lessonName(l), course: c ? courseName(c) : "Курс не указан", courseId: c || "", total: X.E.lesson[l] || 0, week: X.W7.lesson[l] || 0, prev: X.P7.lesson[l] || 0,
-    diff: ok ? (X.W7.lesson[l] || 0) - (X.P7.lesson[l] || 0) : null, peak: peakInfo("lesson", l) }; });
-  const courses = [...new Map(all.map(r => [r.courseId, r.course])).entries()].sort((a, b) => a[1].localeCompare(b[1], "ru"));
-  $("lesCourse").innerHTML = "<option value=''>Все курсы</option>" + courses.map(([id, n]) => "<option value='" + esc(id) + "'" + (id === ui.les.course ? " selected" : "") + ">" + esc(n) + "</option>").join("");
-  const q = ui.les.q.trim().toLowerCase(), pass = r => (!ui.les.course || r.courseId === ui.les.course) && (!q || r.name.toLowerCase().includes(q));
-  const zero = all.filter(r => !r.total).length;
-  $("lesCap").textContent = "Топ-10 по просмотрам за всё время, остальные — по кнопке. " + (C.cok ? "В списке все " + fmt(C.cok.length) + " уроков Фоксфорда в «Моей школе», ни разу не открывали " + fmt(zero) + ". Название урока ведёт на его страницу в МШ. " : "Пока в списке только уроки, которые открывали хотя бы раз. ") + cmpCaption();
-  sortTable($("lesTable"), [
-    { k: "name", label: "Урок", html: r => (C.msh && C.msh[r.id] ? "<a href='https://www.gosuslugi.ru/edu-content/lesson/" + C.msh[r.id] + "' target='_blank' rel='noopener' style='color:inherit'>" + esc(r.name) + "</a>" : esc(r.name)) +
- "<span class='sub2'>" + esc(r.course) + "</span>" },
-    { k: "total", label: "Всего", num: true },
-    { k: "week", label: "За 7 дней", num: true },
-    { k: "diff", label: "Изм.", num: true, html: r => chg(r.week, r.prev, ok) },
-    { k: "peakAvg", label: "Пиковый день и кто его даёт", cls: "peak", html: r => peakHtml(r.peak) }
-  ], all.filter(pass).map(r => Object.assign(r, { peakAvg: r.peak ? r.peak.avg : 0 })), ui.les, { numbered: true, allLabel: "Показать все уроки", rerender: renderLessons });
-}
-$("lesCourse").onchange = e => { ui.les.course = e.target.value; renderLessons(); };
-let lT; $("lesSearch").oninput = e => { clearTimeout(lT); lT = setTimeout(() => { ui.les.q = e.target.value; renderLessons(); }, 150); };
 
 // ---------- Дни недели ----------
 const mondayOf = k => addDays(k, -dow(k));
@@ -1113,7 +1164,7 @@ $("billNav").addEventListener("click", e => {
   if (MS[i]) { bill.month = MS[i].month; renderBilling(); } });
 
 // ---------- Вкладки и общий рендер ----------
-const TABS = ["overview", "regions", "schools", "courses", "lessons", "weekdays", "billing"];
+const TABS = ["overview", "regions", "schools", "courses", "weekdays", "billing"];
 function readTab() { const h = (location.hash || "").replace("#", ""); return TABS.includes(h) ? h : "overview"; }
 function render() {
   tab = readTab();
@@ -1125,7 +1176,7 @@ function render() {
   const L = X.days[X.latest];
   $("coverage").hidden = true; // строка «Учёт с … по …» больше не показывается; остаётся только для загрузки и ошибок
   $("updData").textContent = "Данные получены " + longDate(X.latest) + " в " + L.lastAt + " мск";
-  ({ overview: renderOverview, regions: renderRegions, schools: renderSchools, courses: renderCourses, lessons: renderLessons, weekdays: renderWeekdays, billing: renderBilling })[tab]();
+  ({ overview: renderOverview, regions: renderRegions, schools: renderSchools, courses: renderCourses, weekdays: renderWeekdays, billing: renderBilling })[tab]();
 }
 window.addEventListener("hashchange", () => { render(); window.scrollTo(0, 0); });
 let rz, lastW = window.innerWidth; window.addEventListener("resize", () => { if (window.innerWidth === lastW) return; lastW = window.innerWidth; clearTimeout(rz); rz = setTimeout(render, 150); });
