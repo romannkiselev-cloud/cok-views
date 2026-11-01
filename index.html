@@ -1133,15 +1133,21 @@ function billBreakRows(M, P) {
     for (const c in reg) for (const b of ["1-6", "7-11"]) reg[c][b] = Math.round(reg[c][b] * M.est.share[b]);
     for (const c in crs) { const g = gradeOf(c); crs[c].lessons = g ? Math.round(crs[c].lessons * M.est.share[g <= 6 ? "1-6" : "7-11"]) : 0; }
   } else if (M.byRegion) {
+    // пока скрипт не перечитал файлы, разбивки по дням нет — не показываем пустую таблицу
+    let nb = 0; for (const c in M.byRegion) nb += (M.byRegion[c]["1-6"] || 0) + (M.byRegion[c]["7-11"] || 0);
+    if (!nb && (M.lessons["1-6"] + M.lessons["7-11"])) return null;
     for (const c in M.byRegion) Object.assign(R(c), M.byRegion[c]);
     for (const c in (M.byCourse || {})) Object.assign(Cc(c), M.byCourse[c]);
   } else return null;
   const share = (n, v) => v ? n / v * 100 : null;
+  let partial = null;
+  if (!M.est && M.byRegion) { let nb = 0; for (const c in M.byRegion) nb += (M.byRegion[c]["1-6"] || 0) + (M.byRegion[c]["7-11"] || 0);
+    const tot = M.lessons["1-6"] + M.lessons["7-11"]; if (nb < tot) partial = { nb, tot }; }
   const regions = Object.keys(reg).filter(c => c !== "0").map(c => { const b = reg[c], n = b["1-6"] + b["7-11"];
     return { id: c, name: regionName(c), n, s1: b["1-6"] * P["1-6"], s2: b["7-11"] * P["7-11"], sum: b["1-6"] * P["1-6"] + b["7-11"] * P["7-11"], views: b.views, share: share(n, b.views) }; }).filter(r => r.n || r.views);
   const courses = Object.keys(crs).map(c => { const b = crs[c], g = gradeOf(c), pr = g ? P[g <= 6 ? "1-6" : "7-11"] : 0;
     return { id: c, name: courseName(c), n: b.lessons, sum: b.lessons * pr, views: b.views, share: share(b.lessons, b.views) }; }).filter(r => r.n || r.views);
-  return { regions, courses };
+  return { regions, courses, partial };
 }
 function renderBillBreak(M, P) {
   const mName = M.empty ? "" : MONTHS_N[+M.month.slice(5) - 1].toLowerCase(), v = bill.view;
@@ -1152,7 +1158,7 @@ function renderBillBreak(M, P) {
     (M.est ? "<p>Оценка: в отчёте «Моей школы» нет времени на уроке и баллов, поэтому к парам «ученик — урок» применена доля попадания в биллинг за " + MONTHS_N[+M.est.from.slice(5) - 1].toLowerCase() + " — отдельно для 1–6 и 7–11 классов. Уроки округлены в каждой строке, поэтому итог может на несколько уроков расходиться с суммой вверху. Доля «в биллинг» здесь у всех почти одинаковая и различается только составом классов.</p>" : "") +
     "<p>Нажмите на заголовок столбца, чтобы отсортировать.</p>";
   const T = M.empty ? null : billBreakRows(M, P);
-  if (!T) { $("bbTable").innerHTML = "<p class='cap' style='margin:0'>" + (M.empty ? "Данных за этот месяц пока нет." : "Появится после обновления скрипта Google.") + "</p>"; return; }
+  if (!T) { $("bbTable").innerHTML = "<p class='cap' style='margin:0'>" + (M.empty ? "Данных за этот месяц пока нет." : "Появится, когда скрипт Google пересчитает файлы после обновления.") + "</p>"; return; }
   const est = M.est ? "≈\u00a0" : "", rr = x => x ? est + rub(x) : "—", nn = x => est + fmt(Math.round(x)), pc = x => x == null ? "—" : est + pct1(x, 100);
   const cols = v === "region" ? [
     { k: "name", label: "Регион" }, { k: "n", label: "Уроков", num: true, html: r => nn(r.n) },
@@ -1169,6 +1175,7 @@ function renderBillBreak(M, P) {
     const foot = "<tr><td class='idx'></td><td class='name'>" + (q ? "Итого по найденным" : "Итого") + " · " + fmt(rows.length) + "</td><td class='r'>" + nn(N) + "</td>" +
       (v === "region" ? "<td class='r'>" + rr(t("s1")) + "</td><td class='r'>" + rr(t("s2")) + "</td>" : "") + "<td class='r'>" + rr(t("sum")) + "</td><td class='r'>" + pc(V ? N / V * 100 : null) + "</td></tr>";
     sortTable($("bbTable"), cols, rows, st, { numbered: true, rerender: draw, foot });
+    if (T.partial) $("bbTable").insertAdjacentHTML("afterbegin", "<p class='cap' style='margin:0 0 10px;color:var(--warn-ink)'>Скрипт Google ещё пересчитывает файлы: в разбивке пока " + fmt(T.partial.nb) + " из " + fmt(T.partial.tot) + " засчитанных уроков.</p>");
   };
   bill.drawBreak = draw; draw();
 }
