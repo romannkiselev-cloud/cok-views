@@ -247,7 +247,6 @@ td.peak b { font-weight: 600; }
   <nav class="tabs" aria-label="Разделы">
     <a href="#overview" data-tab="overview">Общая</a>
     <a href="#regions" data-tab="regions">Регионы</a>
-    <a href="#schools" data-tab="schools">Школы</a>
     <a href="#courses" data-tab="courses">Курсы</a>
     <a href="#weekdays" data-tab="weekdays">Дни недели</a>
     <a href="#billing" data-tab="billing">Биллинг</a>
@@ -332,33 +331,11 @@ td.peak b { font-weight: 600; }
         <div class="legend"><span><i style="background:var(--accent)"></i>за день</span><span><i style="background:var(--accent-soft)"></i>день ещё идёт</span><span><i style="background:var(--s1);height:3px;vertical-align:3px"></i>всего нарастающим итогом</span><span><i style="background:var(--hq);box-shadow:inset 0 0 0 1px var(--hq-bar)"></i>четвертные каникулы</span><span><i style="background:var(--hm);box-shadow:inset 0 0 0 1px var(--hm-bar)"></i>модульные каникулы</span></div>
       </section>
       <section class="panel"><h2 class="with-info">Топ курсов <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip">Просмотры учеников региона за всё время наблюдения.</span></span></h2><ol class="rank" id="rmCourses"></ol></section>
-      <section class="panel"><h2 class="with-info"><span id="rmSchTitle">Школы региона</span> <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="rmSchCap"></span></span></h2><div class="scroll" id="rmSchools"></div></section>
+      <section class="panel"><div class="panel-head" style="margin-bottom:12px"><h2 class="with-info" style="margin:0 !important"><span id="rmSchTitle">Школы региона</span> <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="rmSchCap"></span></span></h2><input type="search" id="rmSchSearch" class="regsearch" placeholder="Найти школу" aria-label="Найти школу в регионе"></div><div class="scroll" id="rmSchools"></div></section>
     </div>
   </div>
 
   <!-- ===== Школы ===== -->
-  <section class="page" id="p-schools" hidden>
-    <div class="grid4" id="schKpi"></div>
-    <section class="panel">
-      <h2 class="with-info">Все школы <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="schTableCap"></span></span></h2>
-      <div class="filters">
-        <select id="schRegion" aria-label="Регион"><option value="">Все регионы</option></select>
-        <input id="schSearch" type="search" placeholder="Поиск по названию школы" aria-label="Поиск по названию школы">
-      </div>
-      <div class="scroll" id="schTable"></div>
-    </section>
-    <div class="grid2">
-      <section class="panel">
-        <h2 class="with-info">Новые школы <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="schNewCap"></span></span></h2>
-        <ul class="list-plain" id="schNew"></ul>
-      </section>
-      <section class="panel">
-        <h2 class="with-info">Пропавшие школы <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="schLostCap"></span></span></h2>
-        <ul class="list-plain" id="schLost"></ul>
-      </section>
-    </div>
-  </section>
-
   <!-- ===== Курсы ===== -->
   <section class="page" id="p-courses" hidden>
     <section class="panel">
@@ -482,7 +459,7 @@ let J = null, C = { courses: {}, lessons: {}, cok: null }, X = null;
 let loaded = false, tab = "overview", wdCat = "course";
 let bigMonth = null; // месяц на графике «по дням», ГГГГ-ММ; по умолчанию — месяц последних данных
 const ui = {
-  reg: { sort: "total", dir: -1, sel: null }, sch: { sort: "total", dir: -1, limit: 50, region: "", q: "" },
+  reg: { sort: "total", dir: -1, sel: null },
   crs: { sort: "total", dir: -1, limit: 10 }, les: { sort: "total", dir: -1, limit: 10, course: "", q: "" }
 };
 
@@ -754,6 +731,7 @@ $("bigNav").addEventListener("click", e => { if (!X) return;
   const b = e.target.closest("button[data-d]"); if (!b || b.disabled) return;
   const d = pDate(bigMonth + "-01"); d.setUTCMonth(d.getUTCMonth() + +b.dataset.d); bigMonth = d.toISOString().slice(0, 7); renderBig(); });
 // Треугольник у числа: ▲ зелёный — рост, ▼ красный — падение; при наведении — на сколько отличается
+const MONTHS_P = ["январе","феврале","марте","апреле","мае","июне","июле","августе","сентябре","октябре","ноябре","декабре"];
 const MONTHS_D = ["январю","февралю","марту","апрелю","маю","июню","июлю","августу","сентябрю","октябрю","ноябрю","декабрю"];
 function trend(cur, base, baseLabel) {
   if (base == null || cur == null) return "";
@@ -857,7 +835,7 @@ function renderRegions() {
 $("regSearch").addEventListener("input", () => { if (X) renderRegions(); });
 
 let rmName = null, rmMonth = null;
-function openRegion(n) { rmName = n; rmMonth = null; $("regModal").hidden = false; document.body.classList.add("modal-open"); renderRegionModal(); $("regModal").scrollTop = 0; $("rmClose").focus(); }
+function openRegion(n) { rmName = n; rmMonth = null; $("rmSchSearch").value = ""; if (ui.regSch) ui.regSch.sel = null; $("regModal").hidden = false; document.body.classList.add("modal-open"); renderRegionModal(); $("regModal").scrollTop = 0; $("rmClose").focus(); }
 function closeRegion() { rmName = null; $("regModal").hidden = true; document.body.classList.remove("modal-open"); }
 $("rmClose").addEventListener("click", closeRegion);
 $("regModal").addEventListener("click", e => { if (e.target === $("regModal")) closeRegion(); });
@@ -903,7 +881,8 @@ function renderRegionModal() {
     { k: "pct", label: "К пред. 7 дням", num: true, html: r => wk(r, X.hasP7) }
   ];
   const draw = () => {
-    sortTable($("rmSchools"), cols, srows, st, { numbered: true, rerender: draw, onRow: id => { st.sel = st.sel === id ? null : id; scMonth = null; draw(); } });
+    const q = ($("rmSchSearch").value || "").trim().toLowerCase(), shown = q ? srows.filter(r => r.name.toLowerCase().includes(q)) : srows;
+    sortTable($("rmSchools"), cols, shown, st, { numbered: true, rerender: draw, onRow: id => { st.sel = st.sel === id ? null : id; scMonth = null; draw(); } });
     if (!st.sel) return;
     const tr = [...$("rmSchools").querySelectorAll("tbody tr")].find(t => t.dataset.id === st.sel); if (!tr) return;
     const d = document.createElement("tr"); d.className = "sc-detail";
@@ -925,42 +904,12 @@ function renderRegionModal() {
       const b = e.target.closest("button[data-d]"); if (!b || b.disabled) return;
       const dd = pDate(scMonth + "-01"); dd.setUTCMonth(dd.getUTCMonth() + +b.dataset.d); scMonth = dd.toISOString().slice(0, 7); draw(); };
   };
+  $("rmSchSearch").oninput = () => { st.limit = 30; draw(); };
   draw();
 }
 let scMonth = null;
 
 // ---------- Школы ----------
-function renderSchools() {
-  const ok = X.hasP7;
-  const all = Object.keys(X.E.school).map(si => ({ id: si, name: X.schools[si][0], region: X.regOfSchool[si], total: X.E.school[si] || 0, week: X.W7.school[si] || 0, prev: X.P7.school[si] || 0,
-    diff: ok ? (X.W7.school[si] || 0) - (X.P7.school[si] || 0) : null, first: X.sFirst[si] }));
-  const active = all.filter(r => r.week > 0).length, prevActive = all.filter(r => r.prev > 0).length;
-  const newOk = X.first < X.w7From, fresh = all.filter(r => r.first >= X.w7From), lost = all.filter(r => r.prev > 0 && r.week === 0);
-  $("schKpi").innerHTML =
-    kpiTile("Активных за 7 дней", fmt(active), deltaPill(active, prevActive, ok) + "<span>" + w7Label() + "</span>") +
-    kpiTile("Всего школ", fmt(all.length), "<span>с " + longDate(X.first) + "</span>") +
-    kpiTile("Новых за 7 дней", newOk ? fmt(fresh.length) : "—", newOk ? "<span>первый просмотр с " + shortDate(X.w7From) + "</span>" : "<span>данных пока меньше 7 дней</span>") +
-    kpiTile("Пропавших", ok ? fmt(lost.length) : "—", ok ? "<span>были в " + p7Label() + ", в " + w7Label() + " нет</span>" : "<span>появится с " + longDate(addDays(X.first, 14)) + "</span>");
-  const regs = [...new Set(all.map(r => r.region))].sort((a, b) => a.localeCompare(b, "ru")), cur = ui.sch.region;
-  $("schRegion").innerHTML = "<option value=''>Все регионы</option>" + regs.map(r => "<option" + (r === cur ? " selected" : "") + ">" + esc(r) + "</option>").join("");
-  const q = ui.sch.q.trim().toLowerCase(), pass = r => (!cur || r.region === cur) && (!q || r.name.toLowerCase().includes(q));
-  $("schTableCap").textContent = "Только просмотры учеников. 7 дней — " + w7Label() + ". Колонки сортируются.";
-  sortTable($("schTable"), [
-    { k: "name", label: "Школа", html: r => esc(r.name) + "<span class='sub2'>" + esc(r.region) + "</span>" },
-    { k: "total", label: "Всего", num: true }, { k: "week", label: "За 7 дней", num: true },
-    { k: "diff", label: "Изм.", num: true, html: r => chg(r.week, r.prev, ok) },
-    { k: "first", label: "Первый просмотр", cls: "r", html: r => shortDate(r.first) }
-  ], all.filter(pass), ui.sch, { numbered: true, rerender: renderSchools });
-  const li = (r, v, sub) => "<li><span>" + esc(r.name) + "</span><span class='num'>" + v + "</span><span class='sub2'>" + esc(sub) + "</span></li>";
-  $("schNewCap").textContent = newOk ? "Первый просмотр за " + w7Label() : "Появится, когда в данных будет больше 7 дней";
-  const fr = fresh.filter(pass).sort((a, b) => b.week - a.week);
-  $("schNew").innerHTML = !newOk ? "" : fr.length ? fr.slice(0, 30).map(r => li(r, fmt(r.week), r.region + " · с " + shortDate(r.first))).join("") + (fr.length > 30 ? "<li class='sub2'>и ещё " + (fr.length - 30) + "</li>" : "") : "<li class='na'>Новых школ нет</li>";
-  $("schLostCap").textContent = ok ? "Были в " + p7Label() + ", в " + w7Label() + " просмотров нет" : "Появится с " + longDate(addDays(X.first, 14));
-  const ls = lost.filter(pass).sort((a, b) => b.prev - a.prev);
-  $("schLost").innerHTML = !ok ? "" : ls.length ? ls.slice(0, 30).map(r => li(r, fmt(r.prev), r.region + " · просмотров в " + p7Label())).join("") + (ls.length > 30 ? "<li class='sub2'>и ещё " + (ls.length - 30) + "</li>" : "") : "<li class='na'>Таких школ нет</li>";
-}
-$("schRegion").onchange = e => { ui.sch.region = e.target.value; ui.sch.limit = 50; renderSchools(); };
-let qT; $("schSearch").oninput = e => { clearTimeout(qT); qT = setTimeout(() => { ui.sch.q = e.target.value; ui.sch.limit = 50; renderSchools(); }, 150); };
 
 // ---------- Курсы и уроки ----------
 const PEAK_NOTE = () => "Пиковый день — день недели, в который курс в среднем смотрят больше всего (среднее по полным дням с " + longDate(X.avgFrom) + "); ниже — какие регионы и школы дают этот пик.";
@@ -1164,7 +1113,7 @@ $("billNav").addEventListener("click", e => {
   if (MS[i]) { bill.month = MS[i].month; renderBilling(); } });
 
 // ---------- Вкладки и общий рендер ----------
-const TABS = ["overview", "regions", "schools", "courses", "weekdays", "billing"];
+const TABS = ["overview", "regions", "courses", "weekdays", "billing"];
 function readTab() { const h = (location.hash || "").replace("#", ""); return TABS.includes(h) ? h : "overview"; }
 function render() {
   tab = readTab();
@@ -1176,7 +1125,7 @@ function render() {
   const L = X.days[X.latest];
   $("coverage").hidden = true; // строка «Учёт с … по …» больше не показывается; остаётся только для загрузки и ошибок
   $("updData").textContent = "Данные получены " + longDate(X.latest) + " в " + L.lastAt + " мск";
-  ({ overview: renderOverview, regions: renderRegions, schools: renderSchools, courses: renderCourses, weekdays: renderWeekdays, billing: renderBilling })[tab]();
+  ({ overview: renderOverview, regions: renderRegions, courses: renderCourses, weekdays: renderWeekdays, billing: renderBilling })[tab]();
 }
 window.addEventListener("hashchange", () => { render(); window.scrollTo(0, 0); });
 let rz, lastW = window.innerWidth; window.addEventListener("resize", () => { if (window.innerWidth === lastW) return; lastW = window.innerWidth; clearTimeout(rz); rz = setTimeout(render, 150); });
