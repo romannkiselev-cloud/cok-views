@@ -17,7 +17,7 @@ const FOLDER_ID = 'ВСТАВЬТЕ_СЮДА_ID_ПАПКИ';
 const STATE_FILE_NAME = '_dashboard_state.json'; // служебный файл, не удаляйте и не переименовывайте
 const TZ_OFFSET_HOURS = 3;                         // Metabase отдаёт время в UTC, переводим в Москву
 const REFRESH_MINUTES = 5;                         // как часто скрипт сам проверяет папку (после запуска setup)
-const STATE_VERSION = 6;                           // формат служебного файла (6 — с биллингом)
+const STATE_VERSION = 7;                           // формат служебного файла (6 — с биллингом, 7 — с часами по курсам и школам)
 const START_DATE = '2026-10-06';                   // учитываем данные только с этой даты (мск)
 // Уроки, убранные из каталога «Моей школы» при чистке (октябрь 2026): их просмотры не оплачиваются
 // и в статистику не попадают. Номера уроков у Фоксфорда (lessonProviderId).
@@ -49,6 +49,21 @@ const COURSE_GRADES = {
   '14682': 1, '14683': 2, '14684': 3, '14685': 4, '14690': 5, '14691': 6, '14692': 7, '14693': 8, '14694': 9,
   '14700': 5, '14701': 6, '14702': 7, '14703': 8, '14704': 9, '14705': 7, '14706': 8, '14707': 9, '14710': 7,
   '14713': 5, '14714': 6, '14715': 7, '14717': 9, '14719': 8
+};
+
+// Часовой пояс региона (часы от UTC) — чтобы показывать, в какое время суток по местному времени открывают уроки.
+// Ключ — код региона из выгрузки (в т. ч. дополнительные коды 90–99); всё, чего нет в списке, — UTC+3.
+const REGION_UTC = {
+  '39': 2,
+  '18': 4, '30': 4, '63': 4, '64': 4, '73': 4,
+  '2': 5, '45': 5, '56': 5, '59': 5, '66': 5, '72': 5, '74': 5, '86': 5, '89': 5, '96': 5,
+  '55': 6,
+  '4': 7, '17': 7, '19': 7, '22': 7, '24': 7, '42': 7, '54': 7, '70': 7,
+  '3': 8, '38': 8,
+  '14': 9, '28': 9, '75': 9,
+  '25': 10, '27': 10, '79': 10,
+  '49': 11, '65': 11,
+  '41': 12, '87': 12
 };
 
 const SLOT_DAYS = 15;                             // за сколько последних дней сайт получает разбивку по 15 минутам
@@ -182,6 +197,12 @@ function publicView_(r) {
   keys.forEach(function (k) {
     const d = r.days[k];
     const day = { date: d.date, total: d.total, students: d.students, teachers: d.teachers, firstAt: d.firstAt, lastAt: d.lastAt, regions: d.regions };
+    if (d.ch) day.ch = d.ch; // просмотры по курсам и часам местного времени
+    if (d.sh) { // то же по школам; школа — её номер в списке schools
+      const sh = {};
+      Object.keys(d.sh).forEach(function (x) { const p = x.lastIndexOf('|'), i = idx[x.slice(0, p)]; if (i != null) sh[i + '|' + x.slice(p + 1)] = d.sh[x]; });
+      day.sh = sh;
+    }
     if (k >= slotsFrom) day.slots = d.slots;
     days[k] = day;
     const o = {}, m = d.ls || {};
@@ -250,7 +271,7 @@ function loadState_(folder) {
       if (s && s.days && s.processed && s.version === STATE_VERSION) return { file: file, state: s };
       // Переход 5 → 6: дни оставляем (сайт продолжает показывать цифры), а файлы перечитываем,
       // чтобы посчитать биллинг и учесть новый сдвиг времени
-      if (s && s.days && s.processed && s.version === 5) {
+      if (s && s.days && s.processed && (s.version === 5 || s.version === 6)) {
         s.version = STATE_VERSION; s.processed = {};
         return { file: file, state: s };
       }
@@ -338,6 +359,8 @@ function aggregate_(rows) {
       d = days[k] = { date: k, total: 0, students: 0, teachers: 0, firstAt: hm, lastAt: hm, partialStart: false, regions: {}, ls: {}, slots: [] };
       for (let s = 0; s < 96; s++) d.slots.push(0);
       if (isNew) d.bill = { '1-6': 0, '7-11': 0, unknown: 0 }; // уроки, попавшие в биллинг
+      d.ch = {}; // «курс|час по местному времени региона» → просмотры учеников
+      d.sh = {}; // «школа|час по местному времени региона» → просмотры учеников
     }
     d.total++;
     if (hm < d.firstAt) d.firstAt = hm;
@@ -354,6 +377,9 @@ function aggregate_(rows) {
     if (lid && cid) lessonCourse[lid] = cid;
     // Одна связка «урок | школа» даёт всё остальное: курс (через урок) и регион (через школу)
     if (isNew) billRow_(d, r, cid, cTS, cTE, cP);
+    const lh = (t.getUTCHours() + (REGION_UTC[code] != null ? REGION_UTC[code] : 3) - 3 + 24) % 24;
+    if (cid && d.ch) d.ch[cid + '|' + lh] = (d.ch[cid + '|' + lh] || 0) + 1;
+    if (sid && d.sh) d.sh[sid + '|' + lh] = (d.sh[sid + '|' + lh] || 0) + 1;
     const pk = (lid || '?') + '|' + (sid || '?');
     d.ls[pk] = (d.ls[pk] || 0) + 1;
     if (!minKey || k < minKey) minKey = k;

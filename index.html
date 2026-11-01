@@ -336,10 +336,35 @@ td.peak b { font-weight: 600; }
   </div>
 
   <!-- ===== Школы ===== -->
+  <!-- Поп-ап курса -->
+  <div class="modal" id="crsModal" hidden role="dialog" aria-modal="true" aria-labelledby="cmTitle">
+    <div class="modal-box">
+      <div class="modal-head">
+        <div><h2 id="cmTitle">Курс</h2><p class="cap" id="cmCap"></p></div>
+        <button type="button" class="modal-x" id="cmClose" aria-label="Закрыть">×</button>
+      </div>
+      <div class="grid4" id="cmKpi"></div>
+      <section class="panel">
+        <h2 class="with-info">Просмотры учеников по дням <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip"><p>Сентябрь — по отчёту «Моей школы» (пары «ученик — урок» по дате первого просмотра).</p><p>Даты каникул: по четвертям — рекомендации Минпросвещения, по модульной системе 5+1 — типовой график.</p></span></span></h2>
+        <div class="mbar" id="cmNav" role="group" aria-label="Месяц на графике">
+          <button type="button" class="mbtn" data-d="-1" aria-label="Предыдущий месяц">‹</button>
+          <div class="mtabs" id="cmMonths"></div>
+          <button type="button" class="mbtn" data-d="1" aria-label="Следующий месяц">›</button>
+        </div>
+        <div class="big" id="cmBig"></div>
+        <div class="legend"><span><i style="background:var(--accent)"></i>за день</span><span><i style="background:var(--accent-soft)"></i>день ещё идёт</span><span><i style="background:var(--s1);height:3px;vertical-align:3px"></i>всего нарастающим итогом</span><span><i style="background:var(--hq);box-shadow:inset 0 0 0 1px var(--hq-bar)"></i>четвертные каникулы</span><span><i style="background:var(--hm);box-shadow:inset 0 0 0 1px var(--hm-bar)"></i>модульные каникулы</span></div>
+      </section>
+      <section class="panel">
+        <h2 class="with-info"><span id="cmHoursTitle">Просмотры по часам</span> <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="cmHoursInfo"></span></span></h2>
+        <div class="chart" id="cmHours"></div>
+      </section>
+    </div>
+  </div>
+
   <!-- ===== Курсы ===== -->
   <section class="page" id="p-courses" hidden>
     <section class="panel">
-      <h2 class="with-info">Все курсы <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="crsCap"></span></span></h2>
+      <div class="panel-head" style="margin-bottom:12px"><h2 class="with-info" style="margin:0 !important">Все курсы <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="crsCap"></span></span></h2><input type="search" id="crsSearch" class="regsearch" placeholder="Найти курс" aria-label="Найти курс"></div>
       <div class="scroll" id="crsTable"></div>
     </section>
   </section>
@@ -460,7 +485,7 @@ let loaded = false, tab = "overview", wdCat = "course";
 let bigMonth = null; // месяц на графике «по дням», ГГГГ-ММ; по умолчанию — месяц последних данных
 const ui = {
   reg: { sort: "total", dir: -1, sel: null },
-  crs: { sort: "total", dir: -1, limit: 10 }, les: { sort: "total", dir: -1, limit: 10, course: "", q: "" }
+  crs: { sort: "total", dir: -1 }
 };
 
 const courseName = id => C.courses[id] || ("Курс " + id);
@@ -891,12 +916,14 @@ function renderRegionModal() {
       "<div class='sc-head'><b>" + esc(X.schools[st.sel][0]) + "</b><span>всего " + fmt(x.total) + " · за 7 дней " + fmt(x.week) + " · первый просмотр " + shortDate(x.first) + ", последний " + shortDate(x.last) + "</span></div>" +
       "<div class='mbar' id='scNav' role='group' aria-label='Месяц на графике школы'><button type='button' class='mbtn' data-d='-1' aria-label='Предыдущий месяц'>‹</button><div class='mtabs' id='scMonths'></div><button type='button' class='mbtn' data-d='1' aria-label='Следующий месяц'>›</button></div>" +
       "<div class='big' id='scBig'></div>" +
+      "<h3 class='sc-sub with-info'>Просмотры по часам · в среднем за день <span class='info' tabindex='0' role='button' aria-label='Пояснение'>i<span class='info-pop' role='tooltip' id='scHoursInfo'></span></span></h3><div class='chart' id='scHours'></div>" +
       "<h3 class='sc-sub'>Самые просматриваемые курсы</h3><ol class='rank' id='scCourses'></ol></div></td>";
     tr.after(d);
     // на узком экране таблица прокручивается вбок — блок подробностей держим в видимой ширине
     const box = d.querySelector(".sc-box"); box.style.width = Math.max(260, $("rmSchools").clientWidth - 28) + "px";
     const sv = G.sday[st.sel] || {};
     scMonth = comboChart({ el: $("scBig"), months: $("scMonths"), nav: $("scNav"), plotId: "scPlot", month: scMonth, val: k => sv[k] || 0 });
+    hoursBlock("sh", st.sel, $("scHours"), $("scHoursInfo"));
     const scs = G.scourse[st.sel] || {};
     renderRank("scCourses", sortEntries(scs).map(([c, v]) => [courseName(c), v]), sumVals(scs), "Просмотров нет");
     $("scNav").onclick = e => {
@@ -918,15 +945,86 @@ function renderCourses() {
   const ok = X.hasP7;
   const ids = new Set(Object.keys(X.E.course)); if (C.cokCourses) C.cokCourses.forEach(c => ids.add(String(c)));
   const rows = [...ids].filter(c => c !== "?").map(c => ({ id: c, name: courseName(c), total: X.E.course[c] || 0, week: X.W7.course[c] || 0, prev: X.P7.course[c] || 0,
-    diff: ok ? (X.W7.course[c] || 0) - (X.P7.course[c] || 0) : null, peak: peakInfo("course", c) }));
-  $("crsCap").textContent = "Топ-10 по просмотрам за всё время, остальные — по кнопке. " + cmpCaption() + " " + PEAK_NOTE();
+    diff: ok ? (X.W7.course[c] || 0) - (X.P7.course[c] || 0) : null }));
+  $("crsCap").textContent = "Все курсы, включая те, где просмотров пока нет. " + cmpCaption() + " Нажмите на заголовок столбца, чтобы отсортировать, на курс — чтобы открыть подробности.";
+  const q = ($("crsSearch").value || "").trim().toLowerCase(), shown = q ? rows.filter(r => r.name.toLowerCase().includes(q)) : rows;
   sortTable($("crsTable"), [
     { k: "name", label: "Курс" },
     { k: "total", label: "Всего", num: true },
     { k: "week", label: "За 7 дней", num: true },
-    { k: "diff", label: "Изм.", num: true, html: r => chg(r.week, r.prev, ok) },
-    { k: "peakAvg", label: "Пиковый день и кто его даёт", cls: "peak", html: r => peakHtml(r.peak) }
-  ], rows.map(r => Object.assign(r, { peakAvg: r.peak ? r.peak.avg : 0 })), ui.crs, { numbered: true, allLabel: "Показать все курсы", rerender: renderCourses });
+    { k: "diff", label: "Изм.", num: true, html: r => chg(r.week, r.prev, ok) }
+  ], shown, ui.crs, { numbered: true, rerender: renderCourses, onRow: id => openCourse(id) });
+}
+$("crsSearch").addEventListener("input", () => { if (X) renderCourses(); });
+
+// ---------- Поп-ап курса ----------
+let CG = null;
+function courseStats() { // курс → {день: просмотры}, школы и регионы курса
+  if (CG && CG.X === X) return CG;
+  const day = {}, sch = {}, reg = {};
+  for (const k of X.keys) { const m = J.ls[k] || {};
+    for (const pk in m) { const p = pk.indexOf("|"), c = lessonCourseOf(pk.slice(0, p)) || "?", si = pk.slice(p + 1);
+      add(day[c] || (day[c] = {}), k, m[pk]); (sch[c] || (sch[c] = new Set())).add(si); (reg[c] || (reg[c] = new Set())).add(X.regOfSchool[si]); } }
+  return (CG = { X, day, sch, reg });
+}
+let cmId = null, cmMonth = null;
+function openCourse(c) { cmId = c; cmMonth = null; $("crsModal").hidden = false; document.body.classList.add("modal-open"); renderCourseModal(); $("crsModal").scrollTop = 0; $("cmClose").focus(); }
+function closeCourse() { cmId = null; $("crsModal").hidden = true; document.body.classList.remove("modal-open"); }
+$("cmClose").addEventListener("click", closeCourse);
+$("crsModal").addEventListener("click", e => { if (e.target === $("crsModal")) closeCourse(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && cmId) closeCourse(); });
+$("cmNav").addEventListener("click", e => { if (!X || !cmId) return;
+  const t = e.target.closest("button[data-m]"); if (t) { cmMonth = t.dataset.m; renderCourseModal(); return; }
+  const b = e.target.closest("button[data-d]"); if (!b || b.disabled) return;
+  const d = pDate(cmMonth + "-01"); d.setUTCMonth(d.getUTCMonth() + +b.dataset.d); cmMonth = d.toISOString().slice(0, 7); renderCourseModal(); });
+function renderCourseModal() {
+  if (!cmId) return;
+  const c = cmId, G = courseStats(), dv = G.day[c] || {}, val = k => dv[k] || 0, total = X.E.course[c] || 0;
+  const all = Object.keys(X.E.course).filter(x => x !== "?").sort((a, b) => X.E.course[b] - X.E.course[a]), place = all.indexOf(c) + 1;
+  $("cmTitle").textContent = courseName(c);
+  $("cmCap").textContent = total ? place + "-е место из " + all.length + " по числу просмотров учеников · " + pct1(total, sumVals(X.E.course)) + " всех просмотров" : "Просмотров учеников пока нет";
+  cmMonth = comboChart({ el: $("cmBig"), months: $("cmMonths"), nav: $("cmNav"), plotId: "cmPlot", month: cmMonth, val });
+  // показатели
+  const mSum = (mm, to) => { let t = 0; for (const k of X.keys) if (k.slice(0, 7) === mm && (!to || +k.slice(8) <= to)) t += val(k); return t; };
+  const cur = X.latest.slice(0, 7), mi = +cmMonth.slice(5) - 1, prev = (d => (d.setUTCMonth(d.getUTCMonth() - 1), d.toISOString().slice(0, 7)))(pDate(cmMonth + "-01")), pi = +prev.slice(5) - 1;
+  let mBase = null, mLab = "ко всему " + MONTHS_D[pi];
+  if (cmMonth === cur) { const day = +X.latest.slice(8), pl = pDate(cmMonth + "-01"); pl.setUTCDate(0); const whole = day >= pl.getUTCDate(); mBase = whole ? mSum(prev) : mSum(prev, day); if (!whole) mLab = "к 1–" + day + " " + MONTHS[pi]; }
+  else if (cmMonth < cur) mBase = mSum(prev);
+  const mT = cmMonth <= cur ? mSum(cmMonth) : null, yk = X.latestDone ? X.latest : addDays(X.latest, -1), pk = addDays(yk, -7);
+  const tile = (label, value, meta) => "<section class='panel kpi small'><div class='label'>" + label + "</div><div class='value'>" + value + "</div>" + (meta ? "<div class='meta'><span>" + meta + "</span></div>" : "") + "</section>";
+  const nS = (G.sch[c] || new Set()).size, nR = [...(G.reg[c] || new Set())].filter(r => r && r !== "Регион не указан").length;
+  $("cmKpi").innerHTML =
+    tile("Всего просмотров учеников", fmt(total)) +
+    tile("За " + MONTHS_N[mi].toLowerCase(), mT == null ? "—" : fmt(mT) + (mBase ? trend(mT, mBase, mLab) : "")) +
+    tile("За " + longDate(yk), fmt(val(yk)) + (X.days[pk] ? trend(val(yk), val(pk), "к " + ["понедельнику","вторнику","среде","четвергу","пятнице","субботе","воскресенью"][dow(pk)] + " " + longDate(pk)) : "")) +
+    tile("Школ", fmt(nS), fmt(nR) + " " + plural(nR, "регион", "региона", "регионов"));
+  $("cmHoursTitle").textContent = "Просмотры по часам · в среднем за день";
+  hoursBlock("ch", c, $("cmHours"), $("cmHoursInfo"));
+}
+// по часам местного времени — в среднем за день, за всё время, где известно время просмотра
+// field: "ch" (курс|час) или "sh" (номер школы|час)
+function hoursBlock(field, id, el, infoEl) {
+  const hrs = Array(24).fill(0); let nDays = 0;
+  for (const k of X.keys) { const m = X.days[k][field]; if (!m) continue; nDays++;
+    for (let h = 0; h < 24; h++) hrs[h] += m[id + "|" + h] || 0; }
+  const hSum = hrs.reduce((a, b) => a + b, 0), avg = hrs.map(v => nDays ? v / nDays : 0);
+  infoEl.innerHTML = "<p>Время местное: час просмотра пересчитан в часовой пояс региона школы.</p><p>Среднее за день по всем дням наблюдения, где известно время просмотра" + (nDays ? " (" + nDays + " " + plural(nDays, "день", "дня", "дней") + ")" : "") + ".</p>" + (F ? "<p>Сентябрь не входит: в отчёте «Моей школы» нет времени просмотра.</p>" : "");
+  if (!nDays) el.innerHTML = "<p class='cap' style='margin:0'>Появится после обновления скрипта Google.</p>";
+  else if (!hSum) el.innerHTML = "<p class='cap' style='margin:0'>Просмотров пока не было.</p>";
+  else drawHours(el, avg);
+}
+function drawHours(el, hrs) {
+  const W = Math.max(300, Math.round(el.clientWidth || 640)), H = 200, m = { t: 12, r: 8, b: 30, l: 44 };
+  const iw = W - m.l - m.r, ih = H - m.t - m.b, sc = niceScale(Math.max(...hrs) * 1.08), y = v => m.t + ih - v / sc.max * ih;
+  const step = iw / 24, bw = Math.max(4, step * 0.7), tot = hrs.reduce((a, b) => a + b, 0);
+  let s = "<svg viewBox='0 0 " + W + " " + H + "' role='img' aria-label='Просмотры по часам местного времени'><g class='grid'>";
+  for (let v = 0; v <= sc.max + 1e-9; v += sc.step) s += "<line x1='" + m.l + "' x2='" + (W - m.r) + "' y1='" + y(v) + "' y2='" + y(v) + "'/><text x='" + (m.l - 8) + "' y='" + (y(v) + 4) + "' text-anchor='end'>" + fmt1(v) + "</text>";
+  s += "</g>";
+  hrs.forEach((v, h) => { const cx = m.l + step * h + step / 2;
+    if (v > 0) s += "<rect x='" + (cx - bw / 2) + "' y='" + y(v) + "' width='" + bw + "' height='" + (m.t + ih - y(v)) + "' rx='2' fill='var(--accent)'><title>" + h + ":00–" + h + ":59 · " + fmt(v) + " (" + pct1(v, tot) + ")</title></rect>";
+    if (h % (step < 22 ? 3 : 1) === 0) s += "<text x='" + cx + "' y='" + (H - 10) + "' text-anchor='middle' style='fill:var(--muted)'>" + h + "</text>"; });
+  s += "<line x1='" + m.l + "' x2='" + (W - m.r) + "' y1='" + (m.t + ih) + "' y2='" + (m.t + ih) + "' style='stroke:var(--faint)'/></svg>";
+  el.innerHTML = s;
 }
 
 // ---------- Дни недели ----------
