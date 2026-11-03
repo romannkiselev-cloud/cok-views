@@ -153,7 +153,10 @@ details.panel[open] summary { margin-bottom: 12px; }
 .lockbox form { display: flex; gap: 8px; flex-wrap: wrap; }
 .lockbox input { flex: 1 1 200px; font: inherit; font-size: 15px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-width: 0; }
 .lockbox .err { color: var(--bad); font-size: 14px; }
-.kpi.bill .value { font-size: clamp(24px, 2.5vw, 34px); white-space: nowrap; letter-spacing: -0.01em; }
+.grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+@media (max-width: 1100px) { .grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) { .grid4 { grid-template-columns: minmax(0, 1fr); } }
+.kpi.bill .value { font-size: clamp(24px, 2.2vw, 30px); white-space: nowrap; letter-spacing: -0.01em; }
 .kpi.bill-total { background: var(--accent-wash); border-color: var(--accent-soft); }
 .rules { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; }
 .rules li::marker { color: var(--faint); }
@@ -384,10 +387,11 @@ td.peak b { font-weight: 600; }
       <div style="margin-bottom:12px">
         <h2 class="with-info" style="font-size:17px;margin:0 !important"><span id="billTitle">Потенциальный заработок</span> <span class="info" tabindex="0" role="button" aria-label="Как считается">i<span class="info-pop info-wide" role="tooltip"><p id="billCap"></p><p>Это прогноз по выгрузке Metabase, а не начисление: окончательно засчитывает «Моя школа» по своим данным.</p><p><b>Какие уроки попадают в расчёт:</b></p><ul class="rules" id="billRules"></ul></span></span></h2>
       </div>
-      <div class="grid3">
+      <div class="grid4">
         <section class="panel kpi bill"><div class="label">1–6 классы</div><div class="value" id="bLow">—</div><div class="meta" id="bLowMeta"></div></section>
         <section class="panel kpi bill"><div class="label">7–11 классы</div><div class="value" id="bHigh">—</div><div class="meta" id="bHighMeta"></div></section>
         <section class="panel kpi bill bill-total"><div class="label" id="bTotalLabel">Итого</div><div class="value" id="bTotal">—</div><div class="meta" id="bTotalMeta"></div></section>
+        <section class="panel kpi bill"><div class="label with-info" style="margin:0 0 8px !important">Учеников <span class="info" tabindex="0" role="button" aria-label="Как считается">i<span class="info-pop info-wide" role="tooltip" id="bStudInfo"></span></span></div><div class="value" id="bStud">—</div><div class="meta" id="bStudMeta"></div></section>
       </div>
       <section class="panel" id="bbPanel" style="margin-top:20px">
         <div class="panel-head bb-head">
@@ -1112,6 +1116,14 @@ function renderBilling() {
   $("bTotalLabel").textContent = "Итого за " + mName;
   $("bTotal").textContent = rub(nL * P["1-6"] + nH * P["7-11"]); $("bTotalMeta").textContent = lessonsWord(nL + nH);
   }
+  const SU = M.empty ? null : studentsOf(M.month); bill.stud = SU;
+  $("bStud").textContent = SU && SU.tot.lo ? fmt(SU.tot.lo) : "—";
+  $("bStudMeta").textContent = SU && SU.tot.lo ? "минимум" : (M.empty ? "" : "Нет данных");
+  $("bStudInfo").innerHTML = "<p>Ученики, которые открыли хотя бы один урок за " + (M.empty ? "месяц" : MONTHS_N[+M.month.slice(5) - 1].toLowerCase()) + ", — по всем просмотрам, а не только засчитанным в биллинг.</p>" +
+    "<p>В выгрузке нет номера ученика, поэтому считаем по планкам. Ученик всегда одной школы и одного класса (класс — из курса; параллели вроде 11А и 11Б не различить, они сливаются).</p>" +
+    "<p>Учеников курса в школе — больше всего пар «ученик — урок» на одном уроке курса: разные уроки одного курса смотрят те же дети.</p>" +
+    "<p>Считаем по нижней планке: по каждой школе и классу берём самый большой курс — считаем, что дети остальных курсов те же. Поэтому реальных учеников не меньше этого числа.</p>" +
+    (M.est ? "<p>Сентябрь — точный подсчёт по отчёту «Моей школы»: в нём те же пары «ученик — урок».</p>" : "");
   renderBillBreak(M, D.prices);
   const R = D.rules, sh = Math.round(R.minShare * 100);
   const items = [
@@ -1124,6 +1136,23 @@ function renderBilling() {
   if (M.est) items.unshift("Сентябрь — оценка: условия ниже к нему напрямую не применить, в отчёте нет времени на уроке и баллов. Доля попадания считается по каждой группе классов отдельно.");
   if (M.daysWithoutData) items.push("За " + M.daysWithoutData + " " + plural(M.daysWithoutData, "день", "дня", "дней") + " нет времени и баллов в выгрузке — эти дни не посчитаны.");
   $("billRules").innerHTML = items.map(t => "<li>" + esc(t) + "</li>").join("");
+}
+// Ученики за месяц — по всем просмотрам. Один урок ученик открывает один раз, поэтому
+// учеников курса в школе = больше всего пар «ученик — урок» на одном уроке этого курса.
+// Школа × класс (класс — из курса): нижняя планка — самый большой курс (все курсы смотрят одни и те же дети),
+// верхняя — сумма курсов (у каждого курса свои дети).
+function studentsOf(month) {
+  const acc = {}; // "школа|класс" → курс → урок → пары
+  for (const k of X.keys) { if (k.slice(0, 7) !== month) continue; const ls = J.ls[k] || {};
+    for (const pk in ls) { const p = pk.indexOf("|"), l = pk.slice(0, p), si = pk.slice(p + 1), c = lessonCourseOf(l); if (!c) continue;
+      const g = gradeOf(c) || ("c" + c), key = si + "|" + g, a = acc[key] || (acc[key] = {}), cc = a[c] || (a[c] = {});
+      cc[l] = (cc[l] || 0) + ls[pk]; } }
+  const tot = { lo: 0, hi: 0 }, reg = {}, crs = {};
+  for (const key in acc) { const si = key.slice(0, key.indexOf("|")), code = X.schools[si] ? String(X.schools[si][1]) : "0";
+    let lo = 0, hi = 0;
+    for (const c in acc[key]) { const m = Math.max(...Object.values(acc[key][c])); lo = Math.max(lo, m); hi += m; crs[c] = (crs[c] || 0) + m; }
+    tot.lo += lo; tot.hi += hi; const r = reg[code] || (reg[code] = { lo: 0, hi: 0 }); r.lo += lo; r.hi += hi; }
+  return { tot, reg, crs, groups: Object.keys(acc).length };
 }
 // Разбивка биллинга за месяц: по регионам (с группами классов) или по курсам.
 // Сентябрь — оценка: пары «ученик — урок» × доля попадания в биллинг опорного месяца, по каждой группе классов.
@@ -1162,7 +1191,7 @@ function renderBillBreak(M, P) {
   $("bbSearch").placeholder = v === "region" ? "Найти регион" : "Найти курс";
   $("bbInfo").innerHTML = "<p>Уроков — засчитано в биллинг" + (v === "region" ? "; суммы по 1–6 и 7–11 классам — по цене урока группы" : "; цена урока — по классу курса") + ".</p><p>В биллинг — какая доля всех просмотров учеников " + (v === "region" ? "региона" : "курса") + " за те же дни засчитана.</p>" +
     (M.est ? "<p>Оценка: в отчёте «Моей школы» нет времени на уроке и баллов, поэтому к парам «ученик — урок» применена доля попадания в биллинг за " + MONTHS_N[+M.est.from.slice(5) - 1].toLowerCase() + " — отдельно для 1–6 и 7–11 классов. Уроки округлены в каждой строке, поэтому итог может на несколько уроков расходиться с суммой вверху. Доля «в биллинг» здесь у всех почти одинаковая и различается только составом классов.</p>" : "") +
-    "<p>Нажмите на заголовок столбца, чтобы отсортировать.</p>";
+    "<p>Учеников — нижняя планка, как в плашке выше." + (v === "course" ? " Одни и те же дети смотрят разные курсы, поэтому в итоге не сумма по курсам, а общее число учеников." : "") + "</p><p>Нажмите на заголовок столбца, чтобы отсортировать.</p>";
   const T = M.empty ? null : billBreakRows(M, P);
   if (!T) { $("bbTable").innerHTML = "<p class='cap' style='margin:0'>" + (M.empty ? "Данных за этот месяц пока нет." : "Появится, когда скрипт Google пересчитает файлы после обновления.") + "</p>"; return; }
   const est = M.est ? "≈\u00a0" : "", rr = x => x ? est + rub(x) : "—", nn = x => est + fmt(Math.round(x)), pc = x => x == null ? "—" : est + pct1(x, 100);
@@ -1174,11 +1203,15 @@ function renderBillBreak(M, P) {
     { k: "name", label: "Курс" }, { k: "n", label: "Уроков", num: true, html: r => nn(r.n) },
     { k: "sum", label: "Сумма", num: true, html: r => "<b>" + rr(r.sum) + "</b>" }, { k: "share", label: "В биллинг", num: true, html: r => pc(r.share) }
   ];
+  const SU = bill.stud;
+  if (SU) { if (v === "region") T.regions.forEach(r => { const x = SU.reg[r.id] || { lo: 0, hi: 0 }; r.stLo = x.lo; r.stHi = x.hi; });
+    else T.courses.forEach(r => { r.stLo = r.stHi = SU.crs[r.id] || 0; }); }
+  cols.splice(1, 0, { k: "stLo", label: "Учеников", num: true, html: r => r.stLo ? fmt(r.stLo) : "—" });
   const all = v === "region" ? T.regions : T.courses, st = bill.st[v];
   const draw = () => {
     const q = ($("bbSearch").value || "").trim().toLowerCase(), rows = q ? all.filter(r => r.name.toLowerCase().includes(q)) : all;
     const t = k => rows.reduce((a, r) => a + (r[k] || 0), 0), N = t("n"), V = t("views");
-    const foot = "<tr><td class='idx'></td><td class='name'>" + (q ? "Итого по найденным" : "Итого") + " · " + fmt(rows.length) + "</td><td class='r'>" + nn(N) + "</td>" +
+    const foot = "<tr><td class='idx'></td><td class='name'>" + (q ? "Итого по найденным" : "Итого") + " · " + fmt(rows.length) + "</td><td class='r'>" + (v === "region" || !SU ? fmt(t("stLo")) : q ? "—" : fmt(SU.tot.lo)) + "</td><td class='r'>" + nn(N) + "</td>" +
       (v === "region" ? "<td class='r'>" + rr(t("s1")) + "</td><td class='r'>" + rr(t("s2")) + "</td>" : "") + "<td class='r'>" + rr(t("sum")) + "</td><td class='r'>" + pc(V ? N / V * 100 : null) + "</td></tr>";
     sortTable($("bbTable"), cols, rows, st, { numbered: true, rerender: draw, foot });
     if (T.partial) $("bbTable").insertAdjacentHTML("afterbegin", "<p class='cap' style='margin:0 0 10px;color:var(--warn-ink)'>Скрипт Google ещё пересчитывает файлы: в разбивке пока " + fmt(T.partial.nb) + " из " + fmt(T.partial.tot) + " засчитанных уроков.</p>");
