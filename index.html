@@ -667,13 +667,17 @@ function comboChart(o) {
   const act = o.months.querySelector("[aria-pressed='true']"); if (act) act.scrollIntoView({ block: "nearest", inline: "nearest" });
   o.nav.querySelector("[data-d='-1']").disabled = bigMonth <= mFirst;
   o.nav.querySelector("[data-d='1']").disabled = bigMonth >= mLast;
-  const cMax = Math.max(1, before, ...pts.map(p => p.cum || 0));
-  const s1 = cMax >= 20000 ? stepScale(cMax) : niceScale(cMax * 1.1), s2 = niceScale(Math.max(1, ...pts.map(p => p.v || 0)) * 1.08);
-  const y1 = v => B1 - (v / s1.max) * H1, y2 = v => B2 - (v / s2.max) * H2;
+  // шкала «всего» — внутри месяца: снизу итог на начало месяца, сверху — запас на прирост как в прошлом месяце
+  // (если месяц идёт сильнее — шкала раздвигается по факту), чтобы линия каждый месяц шла снизу вверх
+  const pmK = (d => (d.setUTCMonth(d.getUTCMonth() - 1), d.toISOString().slice(0, 7)))(pDate(mStart));
+  const cLo = before, cHi = Math.max(cLo + 1, cLo + Math.max(mTotal, mSum(pmK) || 0), ...pts.map(p => p.cum || 0));
+  const s1 = (() => { const r = (cHi - cLo) * 1.08 / 5, e = Math.pow(10, Math.floor(Math.log10(r))), st = [1, 2, 2.5, 5, 10].map(f => f * e).find(v => v >= r), mn = Math.floor(cLo / st) * st;
+    return { min: mn, step: st, max: mn + st * Math.ceil((cHi + (cHi - cLo) * 0.04 - mn) / st) }; })(), s2 = niceScale(Math.max(1, ...pts.map(p => p.v || 0)) * 1.08);
+  const y1 = v => B1 - ((v - s1.min) / (s1.max - s1.min)) * H1, y2 = v => B2 - (v / s2.max) * H2;
   const x = i => 4 + step * i + step / 2;
   // ось (не прокручивается)
   let a = "<svg width='48' height='" + H + "'>";
-  for (let v = 0; v <= s1.max + 1e-9; v += s1.step) a += "<text x='42' y='" + (y1(v) + 4) + "' text-anchor='end'>" + fmt(Math.round(v)) + "</text>";
+  for (let v = s1.min; v <= s1.max + 1e-9; v += s1.step) a += "<text x='42' y='" + (y1(v) + 4) + "' text-anchor='end'>" + fmt(Math.round(v)) + "</text>";
   for (let v = 0; v <= s2.max + 1e-9; v += s2.step) a += "<text x='42' y='" + (y2(v) + 4) + "' text-anchor='end'>" + fmt(Math.round(v)) + "</text>";
   a += "</svg>";
   let s = "<svg width='" + W + "' height='" + H + "' role='img' aria-label='Просмотры учеников по дням до 31 декабря'>";
@@ -686,7 +690,7 @@ function comboChart(o) {
     s += "<rect x='" + x0 + "' y='" + T1 + "' width='" + w + "' height='" + (B2 - T1) + "' fill='var(--h" + h.t + ")' opacity='0.5'/>";
   });
   s += "<g class='grid'>";
-  for (let v = 0; v <= s1.max + 1e-9; v += s1.step) s += "<line x1='0' x2='" + W + "' y1='" + y1(v) + "' y2='" + y1(v) + "'/>";
+  for (let v = s1.min; v <= s1.max + 1e-9; v += s1.step) s += "<line x1='0' x2='" + W + "' y1='" + y1(v) + "' y2='" + y1(v) + "'/>";
   for (let v = 0; v <= s2.max + 1e-9; v += s2.step) s += "<line x1='0' x2='" + W + "' y1='" + y2(v) + "' y2='" + y2(v) + "'/>";
   s += "</g>";
   // подписи панелей
@@ -699,7 +703,8 @@ function comboChart(o) {
   s += "<path d='" + path + "' fill='none' stroke='var(--s1)' stroke-width='2.5' stroke-linejoin='round'/>";
   const last = pts.filter(p => p.cum != null).pop(); const li = pts.indexOf(last);
   if (last) s += "<circle cx='" + x(li) + "' cy='" + y1(last.cum) + "' r='4.5' fill='var(--s1)' stroke='var(--surface)' stroke-width='2'/>";
-  if (last) s += "<text x='" + (li > dates.length - 4 ? x(li) - 9 : x(li) + 9) + "' y='" + (y1(last.cum) - 8) + "'" + (li > dates.length - 4 ? " text-anchor='end'" : "") + " style='fill:var(--ink);font-weight:600;font-size:12px'>" + fmt(last.cum) + "</text>";
+  const ly = last ? (y1(last.cum) - 8 < T1 + 12 ? y1(last.cum) + 18 : y1(last.cum) - 8) : 0; // у самого верха — подпись под точкой
+  if (last) s += "<text x='" + (li > dates.length - 4 ? x(li) - 9 : x(li) + 9) + "' y='" + ly + "'" + (li > dates.length - 4 ? " text-anchor='end'" : "") + " style='fill:var(--ink);font-weight:600;font-size:12px'>" + fmt(last.cum) + "</text>";
   // столбики по дням
   pts.forEach((p, i) => { if (p.v > 0) { const tp = y2(p.v); s += "<rect x='" + (x(i) - bw / 2) + "' y='" + tp + "' width='" + bw + "' height='" + (B2 - tp) + "' rx='3' fill='" + (isPartialDay(p.k) ? "var(--accent-soft)" : "var(--accent)") + "'/>"; } });
   s += "<line x1='0' x2='" + W + "' y1='" + B1 + "' y2='" + B1 + "' style='stroke:var(--faint)'/><line x1='0' x2='" + W + "' y1='" + B2 + "' y2='" + B2 + "' style='stroke:var(--faint)'/>";
@@ -727,6 +732,7 @@ function comboChart(o) {
 function renderBig() {
   bigMonth = comboChart({ el: $("big"), months: $("bigMonths"), nav: $("bigNav"), plotId: "bigPlot", month: bigMonth, val: k => X.days[k].students });
   $("bigInfo").innerHTML = (F ? "<p>Сентябрь — по отчёту «Моей школы»: пары «ученик — урок» по дате первого просмотра. Дни с " + longDate(addDays(F.to, 1)) + " по " + longDate(addDays(LIVE_START, -1)) + " не показаны: данных за них нет.</p>" : "") +
+    "<p>Шкала «всего нарастающим итогом» — в пределах месяца: снизу итог на начало месяца, сверху — запас на прирост как в прошлом месяце. Если линия к середине месяца выше середины графика — идём быстрее прошлого месяца.</p>" +
     "<p>Даты каникул 2026/27: по четвертям — рекомендации Минпросвещения, по модульной системе 5+1 — типовой график. В регионах и школах даты могут отличаться.</p>";
 }
 
