@@ -543,7 +543,8 @@ function derive() {
     }
   }
   return { start, days, keys, first, latest, latestDone, fullDays, avgFrom, nWd, w7From, w7To, p7From, p7To, hasW7, hasP7,
-    schools: S, regOfSchool, E, W7, P7, WDS, WDSCH, sFirst, rFirst, lFirst };
+    schools: S, regOfSchool, E, W7, P7, WDS, WDSCH, sFirst, rFirst, lFirst,
+    hasS: !!(J.students && J.u1) }; // есть ли в данных ученики (версия 4) — считаем при каждом пересчёте, иначе ученики пропадали после загрузки каталога
 }
 const isPartialDay = k => k === X.latest && !X.latestDone;
 const w7Label = () => shortDate(X.w7From) + " — " + shortDate(X.w7To);
@@ -1404,7 +1405,7 @@ function apply(j) {
   RAW = j; J = withFrozen(j);
   // версия 4: views — просмотры (пары «ученик — урок»), newStudents — новые ученики; в версии 3 и в сентябре было поле students
   for (const k in (J.days || {})) { const d = J.days[k]; if (d.views == null) d.views = d.students || 0; }
-  X = j.ls ? derive() : null; if (X) X.hasS = !!(j.students && j.u1); loaded = true;
+  X = j.ls ? derive() : null; loaded = true;
   $("updAdmin").textContent = j.latestFile ? "Дашборд обновлён " + new Date(j.latestFile.updated).toLocaleString("ru-RU", { timeZone: "Europe/Moscow", day: "numeric", month: "long" }) + " в " + new Date(j.latestFile.updated).toLocaleTimeString("ru-RU", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit" }) + " мск" : "";
   render();
 }
