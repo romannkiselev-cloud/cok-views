@@ -768,9 +768,8 @@ function renderBig() {
   for (let k = mStart; k.slice(0, 7) === bigMonth; k = addDays(k, 1)) if (!gap(k)) dates.push(k);
   const months = []; for (let mm = mFirst; mm <= mLast; mm = (d => (d.setUTCMonth(d.getUTCMonth() + 1), d.toISOString().slice(0, 7)))(pDate(mm + "-01"))) months.push(mm);
   const mSum = (mm, f) => { let t = 0, any = false; for (const k of X.keys) if (k.slice(0, 7) === mm) { const v = f(k); if (v != null) { t += v; any = true; } } return any ? t : null; };
-  $("bigMonths").innerHTML = months.map(mm => { const v = mSum(mm, viewsOf), st = mSum(mm, stuOf);
-    return "<button type='button' class='mtab" + (v == null ? " empty" : "") + "' data-m='" + mm + "' aria-pressed='" + (mm === bigMonth) + "'><b>" + MONTHS_N[+mm.slice(5) - 1] + "</b><span>" +
-      (v == null ? "нет данных" : (st != null ? fmt(st) + " " + plural(st, "ученик", "ученика", "учеников") + " · " : "") + fmt(v) + " " + plural(v, "просмотр", "просмотра", "просмотров")) + "</span></button>"; }).join("");
+  $("bigMonths").innerHTML = months.map(mm => { const v = mSum(mm, viewsOf); // месяц без данных — бледный
+    return "<button type='button' class='mtab" + (v == null ? " empty" : "") + "' data-m='" + mm + "' aria-pressed='" + (mm === bigMonth) + "'><b>" + MONTHS_N[+mm.slice(5) - 1] + "</b></button>"; }).join("");
   const act = $("bigMonths").querySelector("[aria-pressed='true']"); if (act) act.scrollIntoView({ block: "nearest", inline: "nearest" });
   $("bigNav").querySelector("[data-d='-1']").disabled = bigMonth <= mFirst;
   $("bigNav").querySelector("[data-d='1']").disabled = bigMonth >= mLast;
