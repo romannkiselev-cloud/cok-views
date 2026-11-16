@@ -47,6 +47,13 @@ const BILL_MIN_POINTS = 30;                        // нужно строго б
 const BILL_NORM_MIN = function (grade) { return grade <= 4 ? 20 : 30; };
 const BILL_BAND = function (grade) { return grade <= 6 ? '1-6' : '7-11'; };
 const BILL_PRICES = { '1-6': 105, '7-11': 300 };   // рублей за урок
+// С 1 ноября 2026 — новые правила биллинга (как у «Моей школы»): все уроки ученика, а не только урок токена;
+// время на уроке — не меньше BILL_MIN_SHARE длительности урока (длительности — из файла в папке биллинга)
+// и не больше нормы СанПиН для класса; баллов — больше BILL_MIN_POINTS. Урок относится к дню своего начала.
+const BILL_NEW_FROM = '2026-11-01';
+const BILL_SANPIN = function (grade) { return grade <= 2 ? 20 : grade <= 4 ? 25 : grade <= 9 ? 30 : 35; }; // минут, СП 2.4.4283-26
+// Папка Google Диска с файлами «Моей школы» (предварительный и окончательный биллинг) и файлом длительностей уроков —
+// её ID хранится в свойствах скрипта под именем BILLING_FOLDER_ID (в открытый репозиторий не попадает).
 const BILL_MAX_FAILS = 10;                         // после стольких неверных паролей вход закрывается на 15 минут
 // Класс курса (courseProviderId → класс)
 const COURSE_GRADES = {
@@ -251,8 +258,13 @@ function build_(budgetMs) {
   const folder = DriveApp.getFolderById(FOLDER_ID);
   const st = loadState_(folder);
   const state = st.state;
-  let changed = false, pending = 0, latest = null;
+  let changed = false, pending = 0, latest = null, forceNewest = false;
   const errors = [];
+  // папка биллинга: файлы «Моей школы» и длительности уроков (длительности нужны до подсчёта выгрузок)
+  const bf = billingFolder_();
+  if (bf) { const b = readBillingFolder_(bf, state); if (b.changed) changed = true; if (b.durChanged) forceNewest = true; }
+  if (!state.orderRegion) { state.orderRegion = {}; forceNewest = true; } // заказы → регионы собираются при подсчёте выгрузки
+  const files = [];
   const it = folder.getFiles();
   while (it.hasNext()) {
     const f = it.next();
@@ -261,16 +273,22 @@ function build_(budgetMs) {
     const mime = f.getMimeType();
     const isSheet = mime === MimeType.GOOGLE_SHEETS;
     if (!isSheet && !/\.(xlsx|csv)$/i.test(name)) continue;
-    const id = f.getId(), upd = f.getLastUpdated().getTime();
+    files.push({ f: f, name: name, isSheet: isSheet, id: f.getId(), upd: f.getLastUpdated().getTime() });
+  }
+  // самую свежую выгрузку пересчитываем, если поменялись длительности уроков: она перекрывает все дни
+  if (forceNewest && files.length) { const nw = files.reduce(function (a, b) { return b.upd > a.upd ? b : a; }); delete state.processed[nw.id]; }
+  for (let fi = 0; fi < files.length; fi++) {
+    const f = files[fi].f, name = files[fi].name, isSheet = files[fi].isSheet, id = files[fi].id, upd = files[fi].upd;
     if (!latest || upd > latest.updated) latest = { name: name, updated: upd };
     if (state.processed[id] === upd) continue;
     if (Date.now() - started > budgetMs) { pending++; continue; }
     try {
       const rows = isSheet ? readGoogleSheet_(id) : /\.csv$/i.test(name) ? Utilities.parseCsv(f.getBlob().getDataAsString('UTF-8')) : readXlsx_(f.getBlob());
-      const agg = aggregate_(rows, catalogLessons_());
+      const agg = aggregate_(rows, catalogLessons_(), state.durations || {});
       mergeDays_(state.days, agg.days);
       Object.keys(agg.schoolInfo).forEach(function (k) { state.schoolInfo[k] = agg.schoolInfo[k]; });
       Object.keys(agg.lessonCourse).forEach(function (k) { state.lessonCourse[k] = agg.lessonCourse[k]; });
+      Object.keys(agg.orderRegion || {}).forEach(function (k) { state.orderRegion[k] = agg.orderRegion[k]; });
       state.processed[id] = upd;
       changed = true;
     } catch (err) {
@@ -291,6 +309,66 @@ function build_(budgetMs) {
     schoolInfo: state.schoolInfo,
     lessonCourse: state.lessonCourse
   };
+}
+
+// ---------- Папка биллинга «Моей школы» ----------
+function billingFolder_() {
+  const id = PropertiesService.getScriptProperties().getProperty('BILLING_FOLDER_ID');
+  if (!id) return null;
+  try { return DriveApp.getFolderById(id); } catch (err) { Logger.log('Папка биллинга недоступна: ' + err); return null; }
+}
+
+/**
+ * Читает папку биллинга, если в ней что-то поменялось:
+ *  — файл длительностей уроков (колонки «ID урока Фоксфорда» и «ИТОГОВАЯ ДЛИТЕЛЬНОСТЬ, мин») → state.durations;
+ *  — файлы биллинга «Моей школы» (provider_lesson_id, grade, order_id, time_start, сумма в последней колонке) →
+ *    state.msh: по месяцам «заказ|курс|классы» → [уроков, рублей]. Месяц файла — самый частый месяц начала уроков;
+ *    если за месяц несколько файлов (предварительный, потом окончательный), берётся самый свежий.
+ */
+function readBillingFolder_(folder, state) {
+  const files = [], it = folder.getFiles();
+  while (it.hasNext()) {
+    const f = it.next(), name = f.getName(), isSheet = f.getMimeType() === MimeType.GOOGLE_SHEETS;
+    if (isSheet || /\.xlsx$/i.test(name)) files.push({ f: f, name: name, isSheet: isSheet, id: f.getId(), upd: f.getLastUpdated().getTime() });
+  }
+  const sig = files.map(function (x) { return x.id + ':' + x.upd; }).sort().join(',');
+  if (state.billSig === sig) return { changed: false, durChanged: false };
+  const str = function (v) { return v == null ? '' : String(v).trim().replace(/\.0+$/, ''); };
+  const cat = catalogLessons_(), months = {}, errs = [];
+  let durations = null;
+  files.forEach(function (x) {
+    try {
+      const rows = x.isSheet ? readGoogleSheet_(x.id) : readXlsx_(x.f.getBlob());
+      const head = (rows[0] || []).map(normKey_);
+      const cD = head.indexOf('итоговаядлительностьмин'), cDl = head.indexOf('idурокафоксфорда');
+      if (cD >= 0 && cDl >= 0) {
+        durations = {};
+        for (let i = 1; i < rows.length; i++) { const l = str(rows[i][cDl]), v = parseFloat(rows[i][cD]); if (l && v > 0) durations[l] = v; }
+        return;
+      }
+      const cL = head.indexOf('providerlessonid'), cG = head.indexOf('grade'), cO = head.indexOf('orderid'), cT = head.indexOf('timestart');
+      if (cL < 0 || cG < 0 || cT < 0) throw new Error('не похоже ни на биллинг «Моей школы», ни на файл длительностей');
+      let cS = head.findIndex(function (h) { return h.indexOf('sum') === 0; }); if (cS < 0) cS = head.length - 1;
+      const agg = {}, mc = {};
+      for (let i = 1; i < rows.length; i++) {
+        const r = rows[i], l = str(r[cL]); if (!l) continue;
+        const t = toMsk_(r[cT], 0), g = parseInt(r[cG], 10);
+        if (t) { const m = t.toISOString().slice(0, 7); mc[m] = (mc[m] || 0) + 1; }
+        const band = g <= 6 ? '1-6' : '7-11';
+        let rub = parseFloat(String(r[cS] == null ? '' : r[cS]).replace('=', '').replace(',', '.'));
+        if (!(rub > 0)) rub = band === '1-6' ? 105.23 : 300;   // в файле сумма бывает формулой без значения
+        const key = (cO >= 0 ? str(r[cO]) : '') + '|' + (state.lessonCourse[l] || cat[l] || '?') + '|' + band;
+        const a = agg[key] || (agg[key] = [0, 0]); a[0]++; a[1] += rub;
+      }
+      const month = Object.keys(mc).sort(function (a, b) { return mc[b] - mc[a]; })[0];
+      if (!month) throw new Error('в файле нет уроков');
+      if (!months[month] || months[month].updated < x.upd) months[month] = { month: month, file: x.name, updated: x.upd, agg: agg };
+    } catch (err) { errs.push({ file: x.name, message: String((err && err.message) || err) }); }
+  });
+  const durChanged = JSON.stringify(durations || {}) !== JSON.stringify(state.durations || {});
+  state.durations = durations || {};
+  state.msh = months; state.billErrors = errs; state.billSig = sig;
+  return { changed: true, durChanged: durChanged };
 }
 
 // ---------- Состояние ----------
@@ -373,7 +451,7 @@ function toMsk_(v, offH) {
  * По дням: просмотры (views, repeat; по регионам, урокам × школам, 15-минуткам, часам), новые ученики
  * (newStudents; u1 — по школам), us — «курс|школа»: ученики, впервые открывшие урок курса в этот день.
  */
-function aggregate_(rows, courseOfLesson) {
+function aggregate_(rows, courseOfLesson, durations) { // durations — урок → длительность, мин (для биллинга с 1 ноября)
   if (!rows || rows.length < 2) throw new Error('В файле нет строк с данными');
   const head = rows[0].map(normKey_);
   const find = function (exact, part) { let i = head.indexOf(exact); if (i < 0) i = head.findIndex(function (h) { return part.some(function (p) { return h.indexOf(p) >= 0; }); }); return i; };
@@ -392,17 +470,18 @@ function aggregate_(rows, courseOfLesson) {
   const cAl = head.indexOf('alias'), cLid = head.indexOf('lessonid'), cU = head.indexOf('userid');
   const isJoined = cAl >= 0 && cLid >= 0 && cL >= 0 && cU >= 0;
   const str = function (v) { return v == null ? '' : String(v).trim().replace(/\.0+$/, ''); };
-  const schoolInfo = {}, lessonCourse = {};
+  const schoolInfo = {}, lessonCourse = {}, orderRegion = {}; // orderRegion — заказ (класс) → регион, для биллинга «Моей школы»
+  const cOrd = head.indexOf('orderid');
   let bad = 0, maxMs = 0;
 
   // 1. Ученики, их токены и уроки
   const users = {}, order = [];
-  const addPair = function (u, lid, t, fixed) {
+  const addPair = function (u, lid, t, fixed, row) { // row — строка с временем урока и баллами (для биллинга)
     if (!lid) return;
     const p = u.pairs[lid];
-    if (!p) { u.pairs[lid] = { t: t, fixed: fixed }; return; }
-    if (fixed && !p.fixed) { u.pairs[lid] = { t: t, fixed: true }; return; }
-    if (!p.fixed && t < p.t) p.t = t;
+    if (!p) { u.pairs[lid] = { t: t, fixed: fixed, r: row || null }; return; }
+    if (fixed && !p.fixed) { u.pairs[lid] = { t: t, fixed: true, r: row || null }; return; }
+    if (!p.fixed && t < p.t) { p.t = t; p.r = row || null; }
   };
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
@@ -427,17 +506,21 @@ function aggregate_(rows, courseOfLesson) {
     if (t < u.t0) u.t0 = t;
     const tk = al || ('r' + i);
     let tok = u.toks[tk];
-    if (!tok) { tok = u.toks[tk] = { t: t, lid: lid, cid: cid, own: isJoined ? null : r }; addPair(u, lid, t, true); }
+    if (!tok) {
+      tok = u.toks[tk] = { t: t, lid: lid, cid: cid, own: isJoined ? null : r }; addPair(u, lid, t, true, isJoined ? null : r);
+      const ord = cOrd >= 0 ? str(r[cOrd]) : '';
+      if (ord && u.code !== '0') orderRegion[ord] = u.code;
+    }
     if (isJoined) {
       const aLid = str(r[cLid]);
       const ts = toMsk_(r[cTS], off);
       if (ts && ts.getTime() > maxMs) maxMs = ts.getTime();
       if (aLid === lid) { // свой урок токена: время просмотра — timeStart, если он есть (иначе остаётся created_at)
         if (!tok.own) tok.own = r;
-        if (ts && !tok.tsSet) { tok.tsSet = true; u.pairs[lid] = { t: ts, fixed: true }; }
+        if (ts && !tok.tsSet) { tok.tsSet = true; u.pairs[lid] = { t: ts, fixed: true, r: r }; }
         continue;
       }
-      if (aLid && ts) addPair(u, aLid, ts, false);
+      if (aLid && ts) addPair(u, aLid, ts, false, r);
     }
   }
 
@@ -487,16 +570,23 @@ function aggregate_(rows, courseOfLesson) {
       d.u1[s] = (d.u1[s] || 0) + 1;
       Object.keys(firstCourse).forEach(function (cid) { const dc = days[keyOf(firstCourse[cid])], x = cid + '|' + s; dc.us[x] = (dc.us[x] || 0) + 1; });
     }
-    // биллинг — по уроку токена, на день входа (как и раньше)
-    if (isNew && !teacher) Object.keys(u.toks).forEach(function (tk) {
-      const tok = u.toks[tk];
-      if (EXCLUDED_LESSONS.has(tok.lid)) return;
-      billRow_(day(keyOf(tok.t), hmOf(tok.t)), tok.own, tok.cid, cTS, cTE, cP, code);
-    });
+    if (isNew && !teacher) {
+      // биллинг до 1 ноября — старые правила: только урок токена, на день входа
+      Object.keys(u.toks).forEach(function (tk) {
+        const tok = u.toks[tk], p = u.pairs[tok.lid];
+        if (EXCLUDED_LESSONS.has(tok.lid) || (p && keyOf(p.t) >= BILL_NEW_FROM)) return;
+        billRow_(day(keyOf(tok.t), hmOf(tok.t)), tok.own, tok.cid, cTS, cTE, cP, code);
+      });
+      // с 1 ноября — новые правила: все уроки ученика, на день начала урока
+      lids.forEach(function (lid) {
+        const p = u.pairs[lid], k = keyOf(p.t);
+        if (k >= BILL_NEW_FROM) billNewRow_(day(k, hmOf(p.t)), p.r, courseOf(lid), lid, cTS, cTE, cP, code, durations);
+      });
+    }
   }
   if (minKey) days[minKey].partialStart = true; // первый день файла мог начаться не с полуночи
   Object.keys(days).forEach(function (k) { days[k].src = maxMs; }); // момент выгрузки: чем больше, тем свежее
-  return { days: days, schoolInfo: schoolInfo, lessonCourse: lessonCourse, bad: bad, users: order.length };
+  return { days: days, schoolInfo: schoolInfo, lessonCourse: lessonCourse, orderRegion: orderRegion, bad: bad, users: order.length };
 }
 
 /** Засчитывает просмотр ученика в биллинг дня, если он проходит условия. */
@@ -508,6 +598,24 @@ function billRow_(d, r, cid, cTS, cTE, cP, code) {
   if (!a || !b) return;                                   // урок не начинали
   const minutes = (b.getTime() - a.getTime()) / 60000, norm = BILL_NORM_MIN(grade);
   if (minutes < BILL_MIN_SHARE * norm || minutes > norm) return;
+  billCount_(d, r, cid, cP, code, grade);
+}
+
+/** Биллинг с 1 ноября: от BILL_MIN_SHARE длительности урока до нормы СанПиН, баллов больше BILL_MIN_POINTS. */
+function billNewRow_(d, r, cid, lid, cTS, cTE, cP, code, durations) {
+  const grade = COURSE_GRADES[cid];
+  if (!grade) { d.bill.unknown++; return; }
+  if (!r) return;                                         // в практику не заходил — времени и баллов нет
+  const a = toMsk_(r[cTS], 0), b = toMsk_(r[cTE], 0);
+  if (!a || !b) return;
+  const len = durations && durations[lid];
+  if (!len) { d.bill.noDur = (d.bill.noDur || 0) + 1; return; } // длительности урока нет в файле — не считаем, но показываем сколько
+  const minutes = (b.getTime() - a.getTime()) / 60000;
+  if (minutes < BILL_MIN_SHARE * len || minutes > BILL_SANPIN(grade)) return;
+  billCount_(d, r, cid, cP, code, grade);
+}
+
+function billCount_(d, r, cid, cP, code, grade) {
   const pts = parseFloat(String(r[cP] == null ? '' : r[cP]).replace(',', '.'));
   if (!(pts > BILL_MIN_POINTS)) return;
   const band = BILL_BAND(grade);
@@ -523,10 +631,10 @@ function billingView_(state) {
   let latest = null, noData = 0;
   keys.forEach(function (k) {
     const d = state.days[k], m = k.slice(0, 7);
-    const mo = months[m] || (months[m] = { month: m, from: k, to: k, lessons: { '1-6': 0, '7-11': 0 }, unknown: 0, daysWithoutData: 0, byRegion: {}, byCourse: {} });
+    const mo = months[m] || (months[m] = { month: m, from: k, to: k, rules: m >= BILL_NEW_FROM.slice(0, 7) ? 'new' : 'old', lessons: { '1-6': 0, '7-11': 0 }, unknown: 0, noDur: 0, daysWithoutData: 0, byRegion: {}, byCourse: {} });
     mo.to = k;
     if (!d.bill) { mo.daysWithoutData++; noData++; return; }
-    mo.lessons['1-6'] += d.bill['1-6'] || 0; mo.lessons['7-11'] += d.bill['7-11'] || 0; mo.unknown += d.bill.unknown || 0;
+    mo.lessons['1-6'] += d.bill['1-6'] || 0; mo.lessons['7-11'] += d.bill['7-11'] || 0; mo.unknown += d.bill.unknown || 0; mo.noDur += d.bill.noDur || 0;
     // разбивка: засчитанные уроки и все просмотры учеников за те же дни (для доли попадания в биллинг)
     const reg = function (c) { return mo.byRegion[c] || (mo.byRegion[c] = { '1-6': 0, '7-11': 0, views: 0 }); };
     Object.keys(d.regions || {}).forEach(function (c) { reg(c).views += d.regions[c]; });
@@ -536,9 +644,23 @@ function billingView_(state) {
     Object.keys(d.bC || {}).forEach(function (c) { crs(c).lessons += d.bC[c]; });
     latest = { date: k, lastAt: d.lastAt };
   });
-  return { version: 1, generatedAt: new Date().toISOString(), updatedAt: state.updatedAt || null, latest: latest,
+  // биллинг «Моей школы» по месяцам: регион — по заказу (классу) из выгрузок, курс — по уроку
+  const msh = Object.keys(state.msh || {}).sort().map(function (m) {
+    const x = state.msh[m], o = { month: m, file: x.file, updated: x.updated, lessons: { '1-6': 0, '7-11': 0 }, sums: { '1-6': 0, '7-11': 0 }, byRegion: {}, byCourse: {} };
+    Object.keys(x.agg).forEach(function (key) {
+      const p = key.split('|'), band = p[2], n = x.agg[key][0], rub = x.agg[key][1];
+      const code = (state.orderRegion || {})[p[0]] || '?', cid = p[1];
+      o.lessons[band] += n; o.sums[band] += rub;
+      const r = o.byRegion[code] || (o.byRegion[code] = { '1-6': 0, '7-11': 0, sum: 0 }); r[band] += n; r.sum += rub;
+      const c = o.byCourse[cid] || (o.byCourse[cid] = { lessons: 0, sum: 0 }); c.lessons += n; c.sum += rub;
+    });
+    return o;
+  });
+  return { version: 2, generatedAt: new Date().toISOString(), updatedAt: state.updatedAt || null, latest: latest,
     prices: BILL_PRICES, rules: { minShare: BILL_MIN_SHARE, minPoints: BILL_MIN_POINTS, norms: { '1-4': BILL_NORM_MIN(1), '5-11': BILL_NORM_MIN(5) } },
-    months: Object.keys(months).sort().map(function (m) { return months[m]; }), daysWithoutData: noData };
+    rulesNew: { from: BILL_NEW_FROM, minShare: BILL_MIN_SHARE, minPoints: BILL_MIN_POINTS, sanpin: { '1-2': BILL_SANPIN(1), '3-4': BILL_SANPIN(3), '5-9': BILL_SANPIN(5), '10-11': BILL_SANPIN(10) }, durations: Object.keys(state.durations || {}).length },
+    months: Object.keys(months).sort().map(function (m) { return months[m]; }), daysWithoutData: noData,
+    msh: msh, mshErrors: state.billErrors || [], mshFolder: !!PropertiesService.getScriptProperties().getProperty('BILLING_FOLDER_ID') };
 }
 
 /**
