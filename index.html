@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
-<title>Просмотры уроков ЦОК</title>
+<title>Ученики и просмотры уроков ЦОК</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=Unbounded:wght@500;600&display=swap">
@@ -27,18 +27,19 @@
   --font-body: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --r: 10px;
   --avg: #B4BDCA; --lastwk: #8EA6E3;
+  --stu: #008C7A; --v1: #2C57C9; --v2: #6F8FE6; /* ученики, просмотры, повторные просмотры */
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0E131A; --surface: #161D27; --ink: #E6EBF2; --muted: #9AA5B6; --faint: #6F7A8C;
     --line: #273142; --accent: #7F9EF3; --accent-soft: #34477A; --accent-wash: #1C2740;
-    --good: #4CC38A; --bad: #F07A63; --warn-bg: #2F2610; --warn-ink: #F2C46B; --avg: #4C5768; --lastwk: #3E5694; color-scheme: dark;
+    --good: #4CC38A; --bad: #F07A63; --warn-bg: #2F2610; --warn-ink: #F2C46B; --avg: #4C5768; --lastwk: #3E5694; --stu: #24A190; --v1: #6B8BEC; --v2: #3A5AC2; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0E131A; --surface: #161D27; --ink: #E6EBF2; --muted: #9AA5B6; --faint: #6F7A8C;
   --line: #273142; --accent: #7F9EF3; --accent-soft: #34477A; --accent-wash: #1C2740;
-  --good: #4CC38A; --bad: #F07A63; --warn-bg: #2F2610; --warn-ink: #F2C46B; --avg: #4C5768; --lastwk: #3E5694; color-scheme: dark;
+  --good: #4CC38A; --bad: #F07A63; --warn-bg: #2F2610; --warn-ink: #F2C46B; --avg: #4C5768; --lastwk: #3E5694; --stu: #24A190; --v1: #6B8BEC; --v2: #3A5AC2; color-scheme: dark;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -140,6 +141,11 @@ td.na { color: var(--faint); }
 .rank .v small { font-weight: 400; color: var(--muted); margin-left: 6px; font-size: 12px; }
 .rank .bar { grid-column: 2 / 4; height: 6px; background: var(--accent-wash); border-radius: 3px; overflow: hidden; }
 .rank .bar span { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.rank.stu .bar span { background: var(--stu); }
+.otip { position: absolute; z-index: 5; pointer-events: none; background: var(--ink); color: var(--bg); font-size: 12.5px; line-height: 1.5; padding: 8px 10px; border-radius: 8px; white-space: nowrap; }
+.otip .row { display: flex; justify-content: space-between; gap: 16px; } .otip .row span:last-child { font-variant-numeric: tabular-nums; }
+.otip i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; }
+.legend i.hatch { background: repeating-linear-gradient(135deg, var(--muted) 0 2px, transparent 2px 5px); box-shadow: inset 0 0 0 1px var(--muted); }
 .foot { font-size: 12px; color: var(--muted); margin: 14px 0 0; }
 
 details.panel summary { cursor: pointer; font-weight: 600; font-size: 15px; }
@@ -225,7 +231,7 @@ td.peak b { font-weight: 600; }
 .mbtn { font: inherit; font-size: 22px; line-height: 1; width: 40px; flex: none; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
 .mbtn:hover:not([disabled]) { background: var(--accent-wash); }
 .mbtn[disabled] { opacity: .35; cursor: default; }
-@media (max-width: 760px) { .mtab:not([aria-pressed="true"]) { display: none; } .mtab { text-align: center; } }
+@media (max-width: 760px) { .mtab:not([aria-pressed="true"]) { display: none; } .mtab { text-align: center; } .mtab span { white-space: normal; } }
 .big { display: grid; grid-template-columns: 48px minmax(0, 1fr); margin-top: 10px; }
 .big .axis svg, .big .plot svg { display: block; }
 .big .axis text, .big .plot text { fill: var(--muted); font-family: var(--font-body); font-size: 11px; }
@@ -245,7 +251,7 @@ td.peak b { font-weight: 600; }
 <div class="wrap" id="app">
   <header>
     <div class="t">
-      <h1>Просмотры уроков ЦОК</h1>
+      <h1>Ученики и просмотры уроков ЦОК</h1>
       <p class="sub" id="coverage">Загружаю данные…</p>
     </div>
     <div class="actions">
@@ -270,28 +276,41 @@ td.peak b { font-weight: 600; }
   <!-- ===== Общая ===== -->
   <section class="page" id="p-overview" hidden>
     <section class="panel">
-      <h2 class="with-info">Просмотры учеников по дням <span class="info" tabindex="0" role="button" aria-label="Пояснение к графику" aria-describedby="bigInfo">i<span class="info-pop" role="tooltip" id="bigInfo"></span></span></h2>
+      <h2 class="with-info">Ученики и просмотры по дням <span class="info" tabindex="0" role="button" aria-label="Пояснение к графику" aria-describedby="bigInfo">i<span class="info-pop" role="tooltip" id="bigInfo"></span></span></h2>
       <div class="mbar" id="bigNav" role="group" aria-label="Месяц на графике">
         <button type="button" class="mbtn" data-d="-1" aria-label="Предыдущий месяц">‹</button>
         <div class="mtabs" id="bigMonths"></div>
         <button type="button" class="mbtn" data-d="1" aria-label="Следующий месяц">›</button>
       </div>
       <div class="big" id="big"></div>
-      <div class="legend"><span><i style="background:var(--accent)"></i>за день</span><span><i style="background:var(--accent-soft)"></i>день ещё идёт</span><span><i style="background:var(--s1);height:3px;vertical-align:3px"></i>всего нарастающим итогом</span><span><i style="background:var(--hq);box-shadow:inset 0 0 0 1px var(--hq-bar)"></i>четвертные каникулы</span><span><i style="background:var(--hm);box-shadow:inset 0 0 0 1px var(--hm-bar)"></i>модульные каникулы</span></div>
+      <div class="legend" id="bigLegend"></div>
     </section>
 
     <section class="panel">
-      <h2 class="with-info">Просмотры учеников по дням недели <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="wbInfo"></span></span></h2>
+      <div class="chart-head">
+        <h2 class="with-info"><span id="wbTitle">Новые ученики по дням недели</span> <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="wbInfo"></span></span></h2>
+        <div class="seg" role="group" aria-label="Что показать" id="wbSeg"><button type="button" data-v="newStudents" aria-pressed="true">Новые ученики</button><button type="button" data-v="views" aria-pressed="false">Просмотры</button></div>
+      </div>
       <div class="chart" id="wbChart"></div>
       <div class="legend" id="wbLegend"></div>
     </section>
 
     <div class="grid2" id="reach"></div>
 
-    <div class="grid2">
+    <div class="grid2" id="topReg">
+      <section class="panel">
+        <div class="panel-head"><h2 class="with-info" style="margin:0 0 12px !important">Топ-5 регионов по числу учеников <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="topRegSCap"></span></span></h2><a href="#regions">Все регионы →</a></div>
+        <ol class="rank stu" id="topRegS"></ol>
+      </section>
       <section class="panel">
         <div class="panel-head"><h2 class="with-info" style="margin:0 0 12px !important">Топ-5 регионов по числу просмотров <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="topAllCap"></span></span></h2><a href="#regions">Все регионы →</a></div>
         <ol class="rank" id="topAll"></ol>
+      </section>
+    </div>
+    <div class="grid2" id="topCrs">
+      <section class="panel">
+        <div class="panel-head"><h2 class="with-info" style="margin:0 0 12px !important">Топ-5 курсов по числу учеников <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="topCrsSCap"></span></span></h2><a href="#courses">Все курсы →</a></div>
+        <ol class="rank stu" id="topCrsS"></ol>
       </section>
       <section class="panel">
         <div class="panel-head"><h2 class="with-info" style="margin:0 0 12px !important">Топ-5 курсов по числу просмотров <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="topCoursesCap"></span></span></h2><a href="#courses">Все курсы →</a></div>
@@ -733,10 +752,97 @@ function comboChart(o) {
   return bigMonth;
 }
 
+// «Общая»: ученики и просмотры за месяц. Сверху — нарастающим итогом (ученики, просмотры),
+// снизу — за день три узких столбика рядом: новые ученики, просмотры, повторные просмотры.
+// Ученики и повторные просмотры есть с 6 октября; сентябрь — только просмотры из отчёта «Моей школы».
+const stuOf = k => X.hasS && J.u1[k] ? (X.days[k].newStudents || 0) : null;
+const repOf = k => X.hasS && J.u1[k] && X.days[k].repeat != null ? X.days[k].repeat : null;
+const viewsOf = k => X.days[k] ? (X.days[k].views || 0) : 0;
 function renderBig() {
-  bigMonth = comboChart({ el: $("big"), months: $("bigMonths"), nav: $("bigNav"), plotId: "bigPlot", month: bigMonth, val: k => X.days[k].students });
-  $("bigInfo").innerHTML = (F ? "<p>Сентябрь — по отчёту «Моей школы»: пары «ученик — урок» по дате первого просмотра. Дни с " + longDate(addDays(F.to, 1)) + " по " + longDate(addDays(LIVE_START, -1)) + " не показаны: данных за них нет.</p>" : "") +
-    "<p>Шкала «всего нарастающим итогом» — в пределах месяца: снизу итог на начало месяца, сверху — запас на прирост как в прошлом месяце. Если линия к середине месяца выше середины графика — идём быстрее прошлого месяца.</p>" +
+  const el = $("big"), S = X.hasS;
+  const mFirst = X.first.slice(0, 7), mLast = CHART_END.slice(0, 7);
+  if (!bigMonth) bigMonth = (X.latestDone ? X.latest : addDays(X.latest, -1)).slice(0, 7); // по умолчанию — месяц последнего полного дня
+  bigMonth = bigMonth < mFirst ? mFirst : bigMonth > mLast ? mLast : bigMonth;
+  const mStart = bigMonth + "-01", dates = [];
+  const gap = k => F && k > F.to && k < LIVE_START; // между отчётом за сентябрь и началом учёта данных нет — не показываем
+  for (let k = mStart; k.slice(0, 7) === bigMonth; k = addDays(k, 1)) if (!gap(k)) dates.push(k);
+  const months = []; for (let mm = mFirst; mm <= mLast; mm = (d => (d.setUTCMonth(d.getUTCMonth() + 1), d.toISOString().slice(0, 7)))(pDate(mm + "-01"))) months.push(mm);
+  const mSum = (mm, f) => { let t = 0, any = false; for (const k of X.keys) if (k.slice(0, 7) === mm) { const v = f(k); if (v != null) { t += v; any = true; } } return any ? t : null; };
+  $("bigMonths").innerHTML = months.map(mm => { const v = mSum(mm, viewsOf), st = mSum(mm, stuOf);
+    return "<button type='button' class='mtab" + (v == null ? " empty" : "") + "' data-m='" + mm + "' aria-pressed='" + (mm === bigMonth) + "'><b>" + MONTHS_N[+mm.slice(5) - 1] + "</b><span>" +
+      (v == null ? "нет данных" : (st != null ? fmt(st) + " " + plural(st, "ученик", "ученика", "учеников") + " · " : "") + fmt(v) + " " + plural(v, "просмотр", "просмотра", "просмотров")) + "</span></button>"; }).join("");
+  const act = $("bigMonths").querySelector("[aria-pressed='true']"); if (act) act.scrollIntoView({ block: "nearest", inline: "nearest" });
+  $("bigNav").querySelector("[data-d='-1']").disabled = bigMonth <= mFirst;
+  $("bigNav").querySelector("[data-d='1']").disabled = bigMonth >= mLast;
+  // нарастающий итог — с начала учёта, чтобы линии продолжались из месяца в месяц
+  let cs = 0, cv = 0; for (const k of X.keys) if (k < mStart) { cs += stuOf(k) || 0; cv += viewsOf(k); }
+  const pts = dates.map(k => { if (k > X.latest || k < X.first || (!X.days[k] && k < LIVE_START)) return { k, none: true };
+    const s = stuOf(k), v = viewsOf(k), r = repOf(k); cv += v; if (s != null) cs += s;
+    return { k, s, v, r, cs: s != null ? cs : null, cv }; });
+  const live = pts.filter(p => !p.none);
+  const fitW = Math.max(0, el.clientWidth - 48 - 8), step = Math.max(30, Math.min(44, Math.floor(fitW / dates.length)));
+  const bw = Math.max(4, Math.min(9, Math.floor((step - 12) / 3))), W = dates.length * step + 8;
+  const H1 = 170, GAP = 36, H2 = 170, LBL = 46, T1 = 24, B1 = T1 + H1, T2 = B1 + GAP, B2 = T2 + H2, H = B2 + LBL;
+  const lv = live.flatMap(p => [p.cv, p.cs]).filter(v => v != null), lo0 = lv.length ? Math.min(...lv) : 0, hi0 = lv.length ? Math.max(...lv, 1) : 1;
+  const s1 = (() => { const r = (hi0 - lo0) * 1.1 / 4 || 1, e = Math.pow(10, Math.floor(Math.log10(r))), st = [1, 2, 2.5, 5, 10].map(f => f * e).find(v => v >= r), mn = Math.floor(lo0 / st) * st;
+    return { min: mn, step: st, max: mn + st * Math.max(1, Math.ceil((hi0 + (hi0 - lo0) * .06 - mn) / st)) }; })();
+  const s2 = niceScale(Math.max(1, ...live.map(p => Math.max(p.v, p.s || 0, p.r || 0))) * 1.08);
+  const y1 = v => B1 - (v - s1.min) / (s1.max - s1.min) * H1, y2 = v => B2 - v / s2.max * H2, x = i => 4 + step * i + step / 2;
+  let a = "<svg width='48' height='" + H + "'>";
+  for (let v = s1.min; v <= s1.max + 1e-9; v += s1.step) a += "<text x='42' y='" + (y1(v) + 4) + "' text-anchor='end'>" + fmt(Math.round(v)) + "</text>";
+  for (let v = 0; v <= s2.max + 1e-9; v += s2.step) a += "<text x='42' y='" + (y2(v) + 4) + "' text-anchor='end'>" + fmt(Math.round(v)) + "</text>";
+  a += "</svg>";
+  let s = "<svg width='" + W + "' height='" + H + "' role='img' aria-label='Ученики и просмотры по дням'><defs>" +
+    ["stu", "v1", "v2"].map(c => "<pattern id='bigH_" + c + "' width='4' height='4' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><rect width='2' height='4' fill='var(--" + c + ")'/></pattern>").join("") + "</defs>";
+  HOLIDAYS.forEach(h => { const i0 = dates.findIndex(k => k >= h.from); let i1 = -1; dates.forEach((k, i) => { if (k <= h.to) i1 = i; });
+    if (i0 < 0 || i1 < i0) return; s += "<rect x='" + (x(i0) - step / 2) + "' y='" + T1 + "' width='" + (i1 - i0 + 1) * step + "' height='" + (B2 - T1) + "' fill='var(--h" + h.t + ")' opacity='0.5'/>"; });
+  s += "<g class='grid'>";
+  for (let v = s1.min; v <= s1.max + 1e-9; v += s1.step) s += "<line x1='0' x2='" + W + "' y1='" + y1(v) + "' y2='" + y1(v) + "'/>";
+  for (let v = 0; v <= s2.max + 1e-9; v += s2.step) s += "<line x1='0' x2='" + W + "' y1='" + y2(v) + "' y2='" + y2(v) + "'/>";
+  s += "</g>";
+  s += "<text x='6' y='" + (T1 - 8) + "' style='fill:var(--ink);font-weight:600;font-size:12px'>Всего нарастающим итогом</text>";
+  s += "<text x='6' y='" + (T2 - 9) + "' style='fill:var(--ink);font-weight:600;font-size:12px'>За день</text>";
+  pts.forEach((p, i) => { if (pDate(p.k).getUTCDate() === 1 && i > 0) s += "<line x1='" + (x(i) - step / 2) + "' x2='" + (x(i) - step / 2) + "' y1='" + T1 + "' y2='" + H + "' style='stroke:var(--faint)' stroke-dasharray='2 3'/>"; });
+  const line = (f, col) => { let d = ""; pts.forEach((p, i) => { if (!p.none && p[f] != null) d += (d ? "L" : "M") + x(i).toFixed(1) + "," + y1(p[f]).toFixed(1); });
+    return d ? "<path d='" + d + "' fill='none' stroke='" + col + "' stroke-width='2' stroke-linejoin='round'/>" : ""; };
+  s += line("cv", "var(--v1)") + line("cs", "var(--stu)");
+  const lastP = live[live.length - 1], li = pts.indexOf(lastP);
+  if (lastP) { const right = li > dates.length - 6, labs = [
+      { f: "cv", col: "var(--v1)", txt: plural(lastP.cv, "просмотр", "просмотра", "просмотров") },
+      { f: "cs", col: "var(--stu)", txt: plural(lastP.cs || 0, "ученик", "ученика", "учеников") }]
+      .filter(l => lastP[l.f] != null).map(l => Object.assign(l, { y: y1(lastP[l.f]), ly: y1(lastP[l.f]) + 4 }));
+    labs.sort((p, q) => p.y - q.y); for (let i = 1; i < labs.length; i++) if (labs[i].ly - labs[i - 1].ly < 16) labs[i].ly = labs[i - 1].ly + 16;
+    labs.forEach(l => { s += "<circle cx='" + x(li) + "' cy='" + l.y + "' r='4' fill='" + l.col + "' stroke='var(--surface)' stroke-width='2'/><text x='" + (right ? x(li) - 10 : x(li) + 10) + "' y='" + l.ly + "'" + (right ? " text-anchor='end'" : "") + " style='fill:var(--ink);font-size:12px'><tspan style='font-weight:600'>" + fmt(lastP[l.f]) + "</tspan> " + l.txt + "</text>"; }); }
+  // столбики: ученики | просмотры | повторные — узкие, рядом
+  pts.forEach((p, i) => { if (p.none) return; const cx = x(i), part = isPartialDay(p.k);
+    const bars = p.s != null ? [[p.s, "stu"], [p.v, "v1"], [p.r, "v2"]] : [[p.v, "v1"]], g = 2, w0 = bars.length * bw + (bars.length - 1) * g;
+    bars.forEach(([v, c], j) => { if (!v) return; const t = y2(v), bx = cx - w0 / 2 + j * (bw + g);
+      s += "<rect x='" + bx + "' y='" + t + "' width='" + bw + "' height='" + (B2 - t) + "' rx='2' fill='" + (part ? "url(#bigH_" + c + ")" : "var(--" + c + ")") + "'/>"; }); });
+  s += "<line x1='0' x2='" + W + "' y1='" + B1 + "' y2='" + B1 + "' style='stroke:var(--faint)'/><line x1='0' x2='" + W + "' y1='" + B2 + "' y2='" + B2 + "' style='stroke:var(--faint)'/>";
+  pts.forEach((p, i) => { const dd = pDate(p.k).getUTCDate(), today = p.k === X.latest;
+    s += "<text x='" + x(i) + "' y='" + (B2 + 14) + "' text-anchor='middle' style='fill:" + (today ? "var(--accent)" : "var(--ink)") + ";font-weight:" + (today ? 600 : 400) + "'>" + dd + "</text>";
+    s += "<text x='" + x(i) + "' y='" + (B2 + 28) + "' text-anchor='middle' style='fill:" + (isOff(p.k) ? "var(--bad)" : "var(--muted)") + "'>" + WD_SHORT[dow(p.k)].toLowerCase() + "</text>"; });
+  pts.forEach((p, i) => { s += "<rect class='hit' data-i='" + i + "' x='" + (x(i) - step / 2) + "' y='0' width='" + step + "' height='" + B2 + "' fill='transparent'/>"; });
+  s += "</svg><div class='otip' hidden></div>";
+  el.innerHTML = "<div class='axis'>" + a + "</div><div class='plot' id='bigPlot'>" + s + "</div>";
+  const plot = $("bigPlot"), tip = plot.querySelector(".otip");
+  const row = (c, l, v) => "<div class='row'><span>" + (c ? "<i style='background:var(--" + c + ")'></i>" : "") + l + "</span><span>" + v + "</span></div>";
+  plot.querySelectorAll(".hit").forEach(r => {
+    const show = () => { const p = pts[+r.dataset.i], hs = holidaysOn(p.k);
+      tip.innerHTML = "<b>" + longDate(p.k) + ", " + WD_FULL[dow(p.k)].toLowerCase() + (isPartialDay(p.k) ? " · день ещё идёт" : "") + "</b>" +
+        (p.none ? "<br>" + (p.k > X.latest ? "дата ещё не наступила" : "данных нет") :
+          (p.s != null ? row("stu", "новые ученики", fmt(p.s)) : "") + row("v1", "просмотры", fmt(p.v)) + (p.r != null ? row("v2", "повторные просмотры", fmt(p.r)) : "") +
+          "<div style='border-top:1px solid rgba(127,127,127,.4);margin:4px 0'></div>" + (p.cs != null ? row("", "всего учеников", fmt(p.cs)) : "") + row("", "всего просмотров", fmt(p.cv))) +
+        hs.map(h => "<br>" + h.name).join("");
+      tip.hidden = false; const tx = Math.max(tip.offsetWidth / 2 + 4, Math.min(plot.scrollWidth - tip.offsetWidth / 2 - 4, x(+r.dataset.i)));
+      tip.style.left = (tx - tip.offsetWidth / 2) + "px"; tip.style.top = (T1 + 6) + "px"; };
+    r.addEventListener("mouseenter", show); r.addEventListener("click", show);
+    r.addEventListener("mouseleave", () => { tip.hidden = true; }); });
+  plot.scrollLeft = li >= 0 ? Math.max(0, x(li) - plot.clientWidth * 0.75) : 0;
+  $("bigLegend").innerHTML = (S ? "<span><i style='background:var(--stu)'></i>ученики</span>" : "") + "<span><i style='background:var(--v1)'></i>просмотры</span>" + (S ? "<span><i style='background:var(--v2)'></i>повторные просмотры</span>" : "") +
+    "<span><i class='hatch'></i>день ещё идёт</span><span><i style='background:var(--hq);box-shadow:inset 0 0 0 1px var(--hq-bar)'></i>четвертные каникулы</span><span><i style='background:var(--hm);box-shadow:inset 0 0 0 1px var(--hm-bar)'></i>модульные каникулы</span>";
+  $("bigInfo").innerHTML = "<p>Ученик — user_id «Моей школы» с указанным регионом, появляется в день первого входа (created_at). Просмотр — пара «ученик — урок»: время — начало практики (timeStart), а если его нет — вход (created_at); повторное открытие того же урока не видно. Повторный просмотр — второй, третий и следующие уроки одного ученика. Учителя не учитываются.</p>" +
+    "<p>Ученики и повторные просмотры — с " + longDate(LIVE_START) + "." + (F ? " Сентябрь — по отчёту «Моей школы»: там только просмотры (пары «ученик — урок» по дате первого просмотра). Дни с " + longDate(addDays(F.to, 1)) + " по " + longDate(addDays(LIVE_START, -1)) + " не показаны: данных за них нет." : "") + "</p>" +
     "<p>Даты каникул 2026/27: по четвертям — рекомендации Минпросвещения, по модульной системе 5+1 — типовой график. В регионах и школах даты могут отличаться.</p>";
 }
 
@@ -762,12 +868,25 @@ function renderOverview() {
   $("reach").innerHTML =
     kpiTile(infoLabel("Школ охвачено", "Школы, ученики которых хотя бы раз открыли наш урок (с " + longDate(X.first) + ")."), fmt(Object.keys(X.E.school).length), "") +
     kpiTile(infoLabel("Регионов охвачено", "Регионы, из которых был хотя бы один просмотр ученика (с " + longDate(X.first) + ")."), fmt(Object.keys(X.E.region).filter(r => r !== "Регион не указан").length) + " <span style='font-size:.5em;color:var(--muted)'>из 89</span>", "");
-  // топ-5
+  // топ-5 по просмотрам
   const reg = {};
   for (const k of keys) { const r = days[k].regions || {}; for (const c in r) add(reg, regionName(c), r[c]); }
   renderRank("topAll", sortEntries(reg), sumVals(reg));
-  $("topAllCap").textContent = $("topCoursesCap").textContent = "С " + longDate(X.first) + " по " + longDate(latest);
-  renderRank("topCourses", sortEntries(X.E.course).map(([c, v]) => [courseName(c), v]), sumVals(X.E.course));
+  $("topAllCap").textContent = $("topCoursesCap").textContent = "С " + longDate(X.first) + " по " + longDate(latest) + ". Процент — доля от всех просмотров." + (F ? " Сентябрь — по отчёту «Моей школы»." : "");
+  renderRank("topCourses", sortEntries(X.E.course).filter(([c]) => c !== "?").map(([c, v]) => [courseName(c), v]), sumVals(X.E.course));
+  // топ-5 по ученикам (ученики есть с 6 октября)
+  $("topRegS").parentElement.hidden = $("topCrsS").parentElement.hidden = !X.hasS;
+  if (X.hasS) {
+    const rs = {}, cs = {}; let tot = 0;
+    for (const k of keys) { tot += stuOf(k) || 0;
+      const u = J.u1[k]; if (u) for (const si in u) add(rs, X.regOfSchool[si] || "Регион не указан", u[si]);
+      const c = J.us[k]; if (c) for (const x in c) add(cs, x.slice(0, x.indexOf("|")), c[x]); }
+    renderRank("topRegS", sortEntries(rs).filter(([r]) => r !== "Регион не указан"), tot);
+    renderRank("topCrsS", sortEntries(cs).map(([c, v]) => [courseName(c), v]), tot);
+    const from = keys.find(k => J.u1[k]) || LIVE_START;
+    $("topRegSCap").textContent = "С " + longDate(from) + " по " + longDate(latest) + ". Процент — доля от всех учеников.";
+    $("topCrsSCap").textContent = "С " + longDate(from) + " по " + longDate(latest) + ". Ученики курса — сколько разных учеников открыли хотя бы один урок курса; один ученик может быть в нескольких курсах. Процент — доля от всех учеников.";
+  }
 }
 
 // ---------- Регионы ----------
@@ -838,7 +957,7 @@ function renderRegionModal() {
   const n = rmName, G = regionStats(), dv = G.day[n] || {}, val = k => dv[k] || 0;
   const rows = regionRows().sort((a, b) => b.total - a.total), place = rows.findIndex(r => r.name === n) + 1, total = X.E.region[n] || 0;
   $("rmTitle").textContent = n;
-  $("rmCap").textContent = total ? place + "-е место из 89 по числу просмотров учеников · " + pct1(total, X.keys.reduce((t, k) => t + X.days[k].students, 0)) + " всех просмотров" : "Просмотров учеников пока нет";
+  $("rmCap").textContent = total ? place + "-е место из 89 по числу просмотров учеников · " + pct1(total, X.keys.reduce((t, k) => t + (X.days[k].views || 0), 0)) + " всех просмотров" : "Просмотров учеников пока нет";
   rmMonth = comboChart({ el: $("rmBig"), months: $("rmMonths"), nav: $("rmNav"), plotId: "rmPlot", month: rmMonth, val });
   // показатели
   const mSum = (mm, to) => { let t = 0; for (const k of X.keys) if (k.slice(0, 7) === mm && (!to || +k.slice(8) <= to)) t += val(k); return t; };
@@ -992,29 +1111,35 @@ function drawHours(el, hrs) {
 }
 
 // ---------- Дни недели ----------
-// «Общая»: по каждому дню недели — в среднем за прошлый месяц, на прошлой и на этой неделе
+// «Общая»: по каждому дню недели — в среднем за прошлый месяц, на прошлой и на этой неделе (новые ученики или просмотры)
+let wbV = "newStudents";
 function renderWeekBars() {
+  if (!X.hasS) wbV = "views";
+  $("wbSeg").hidden = !X.hasS;
+  document.querySelectorAll("#wbSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === wbV)));
+  const isS = wbV === "newStudents", valOf = isS ? stuOf : viewsOf, col = isS ? "var(--stu)" : "var(--v1)";
+  $("wbTitle").textContent = (isS ? "Новые ученики" : "Просмотры") + " по дням недели";
   const cw = mondayOf(X.latest), pw = addDays(cw, -7), todayIdx = dow(X.latest), partial = !X.latestDone;
   const cur = Array.from({ length: 7 }, (_, i) => addDays(cw, i)), prev = Array.from({ length: 7 }, (_, i) => addDays(pw, i));
   // прошлый месяц — календарный месяц перед текущим (по московскому времени); праздники и неполные дни не берём
   const lm = pDate(new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 7) + "-01"); lm.setUTCMonth(lm.getUTCMonth() - 1);
   const pm = lm.toISOString().slice(0, 7);
-  const pmDays = X.keys.filter(k => k.slice(0, 7) === pm && !(k in DAYS_OFF) && (k !== X.latest || X.latestDone));
-  const sums = Array(7).fill(0), cnt = Array(7).fill(0); pmDays.forEach(k => { sums[dow(k)] += X.days[k].students; cnt[dow(k)]++; });
+  const pmDays = X.keys.filter(k => k.slice(0, 7) === pm && !(k in DAYS_OFF) && (k !== X.latest || X.latestDone) && valOf(k) != null);
+  const sums = Array(7).fill(0), cnt = Array(7).fill(0); pmDays.forEach(k => { sums[dow(k)] += valOf(k); cnt[dow(k)]++; });
   const avg = sums.map((v, i) => cnt[i] ? v / cnt[i] : null);
-  const vOf = k => k > X.latest || (k < LIVE_START && !X.days[k]) ? null : (X.days[k] ? X.days[k].students : 0);
+  const vOf = k => k > X.latest || (k < LIVE_START && !X.days[k]) ? null : (X.days[k] ? valOf(k) : 0);
   const prv = prev.map(vOf), wkv = cur.map(vOf);
   const pmName = MONTHS_P[+pm.slice(5) - 1];
   $("wbInfo").innerHTML = "<p>Серый — в среднем за этот день недели в " + pmName + " (" + WD_SHORT.map((d, i) => d.toLowerCase() + " — " + cnt[i]).join(", ") + " дн." + (pmDays.some(k => k < LIVE_START) ? "; сентябрь — по отчёту «Моей школы»" : "") + "). Праздничные дни в среднее не входят.</p>" +
-    "<p>Голубой — прошлая неделя, " + shortDate(prev[0]) + " — " + shortDate(prev[6]) + ". Синий — эта неделя, " + shortDate(cur[0]) + " — " + shortDate(cur[6]) + "." + (partial ? " Штриховка — день ещё идёт, данные неполные." : "") + "</p>";
-  $("wbLegend").innerHTML = "<span><i style='background:var(--avg)'></i>в среднем за " + MONTHS_N[+pm.slice(5) - 1].toLowerCase() + "</span><span><i style='background:var(--lastwk)'></i>на прошлой неделе</span><span><i style='background:var(--accent)'></i>на этой неделе</span>" +
-    (partial ? "<span><i style='background:repeating-linear-gradient(135deg,var(--accent) 0 2px,transparent 2px 5px);box-shadow:inset 0 0 0 1px var(--accent)'></i>день ещё идёт</span>" : "");
+    "<p>Бледный — прошлая неделя, " + shortDate(prev[0]) + " — " + shortDate(prev[6]) + ". Яркий — эта неделя, " + shortDate(cur[0]) + " — " + shortDate(cur[6]) + "." + (partial ? " Штриховка — день ещё идёт, данные неполные." : "") + "</p>";
+  $("wbLegend").innerHTML = "<span><i style='background:var(--avg)'></i>в среднем за " + MONTHS_N[+pm.slice(5) - 1].toLowerCase() + "</span><span><i style='background:" + col + ";opacity:.5'></i>на прошлой неделе</span><span><i style='background:" + col + "'></i>на этой неделе</span>" +
+    (partial ? "<span><i class='hatch'></i>день ещё идёт</span>" : "");
   const el = $("wbChart"), W = Math.max(300, Math.round(el.clientWidth || 640)), H = 260, m = { t: 22, r: 8, b: 30, l: 44 };
   const vals = [...avg, ...prv, ...wkv].filter(v => v != null);
   const iw = W - m.l - m.r, ih = H - m.t - m.b, sc = niceScale(Math.max(1, ...vals) * 1.08);
   const y = v => m.t + ih - v / sc.max * ih, gw = iw / 7, gap = Math.min(4, gw * 0.04), bw = Math.min(36, (gw * 0.8 - 2 * gap) / 3), lab = W >= 700;
-  let h = "<svg viewBox='0 0 " + W + " " + H + "' role='img' aria-label='Просмотры по дням недели: в среднем за прошлый месяц, на прошлой и на этой неделе'>" +
-    "<defs><pattern id='wbHatch' width='5' height='5' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><rect width='2' height='5' fill='var(--accent)'/></pattern></defs><g class='grid'>";
+  let h = "<svg viewBox='0 0 " + W + " " + H + "' role='img' aria-label='" + $("wbTitle").textContent + ": в среднем за прошлый месяц, на прошлой и на этой неделе'>" +
+    "<defs><pattern id='wbHatch' width='5' height='5' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><rect width='2' height='5' fill='" + col + "'/></pattern></defs><g class='grid'>";
   for (let v = 0; v <= sc.max + 1e-9; v += sc.step) h += "<line x1='" + m.l + "' x2='" + (W - m.r) + "' y1='" + y(v) + "' y2='" + y(v) + "'/><text x='" + (m.l - 8) + "' y='" + (y(v) + 4) + "' text-anchor='end'>" + fmt(Math.round(v)) + "</text>";
   h += "</g>";
   const pctTo = (v, base) => base && v != null ? " · " + (v >= base ? "+" : "−") + Math.round(Math.abs(v - base) / base * 100) + "% к среднему" : "";
@@ -1023,13 +1148,14 @@ function renderWeekBars() {
   for (let i = 0; i < 7; i++) {
     const cx = m.l + gw * i + gw / 2, x0 = cx - bw * 1.5 - gap, isPart = partial && i === todayIdx;
     h += bar(x0, avg[i], "var(--avg)", WD_FULL[i] + " · в среднем за " + MONTHS_N[+pm.slice(5) - 1].toLowerCase() + " " + (avg[i] != null ? fmt1(avg[i]) : "—"));
-    h += bar(x0 + bw + gap, prv[i], "var(--lastwk)", WD_FULL[i] + ", " + shortDate(prev[i]) + " · " + fmt(prv[i] || 0) + (prev[i] in DAYS_OFF ? " (" + DAYS_OFF[prev[i]] + ")" : "") + pctTo(prv[i], avg[i]));
-    h += bar(x0 + 2 * (bw + gap), wkv[i], isPart ? "url(#wbHatch)" : "var(--accent)", WD_FULL[i] + ", " + shortDate(cur[i]) + " · " + fmt(wkv[i] || 0) + (isPart ? " (день ещё идёт)" : "") + (cur[i] in DAYS_OFF ? " (" + DAYS_OFF[cur[i]] + ")" : "") + (isPart ? "" : pctTo(wkv[i], avg[i])), isPart ? " stroke='var(--accent)' stroke-width='1'" : "");
+    h += bar(x0 + bw + gap, prv[i], col, WD_FULL[i] + ", " + shortDate(prev[i]) + " · " + fmt(prv[i] || 0) + (prev[i] in DAYS_OFF ? " (" + DAYS_OFF[prev[i]] + ")" : "") + pctTo(prv[i], avg[i]), " opacity='0.5'");
+    h += bar(x0 + 2 * (bw + gap), wkv[i], isPart ? "url(#wbHatch)" : col, WD_FULL[i] + ", " + shortDate(cur[i]) + " · " + fmt(wkv[i] || 0) + (isPart ? " (день ещё идёт)" : "") + (cur[i] in DAYS_OFF ? " (" + DAYS_OFF[cur[i]] + ")" : "") + (isPart ? "" : pctTo(wkv[i], avg[i])), isPart ? " stroke='" + col + "' stroke-width='1'" : "");
     h += "<text x='" + cx + "' y='" + (H - 8) + "' text-anchor='middle' style='fill:" + (i >= 5 ? "var(--bad)" : "var(--ink)") + "'>" + WD_SHORT[i] + "</text>";
   }
   h += "<line x1='" + m.l + "' x2='" + (W - m.r) + "' y1='" + (m.t + ih) + "' y2='" + (m.t + ih) + "' style='stroke:var(--faint)'/></svg>";
   el.innerHTML = h;
 }
+$("wbSeg").addEventListener("click", e => { const b = e.target.closest("button[data-v]"); if (!b || !X) return; wbV = b.dataset.v; renderWeekBars(); });
 
 const mondayOf = k => addDays(k, -dow(k));
 
@@ -1258,7 +1384,7 @@ let rz, lastW = window.innerWidth; window.addEventListener("resize", () => { if 
 // ---------- Загрузка данных ----------
 function status(msg, kind) { const s = $("status"); s.className = "notice " + (kind || ""); s.innerHTML = msg; s.hidden = !msg; }
 let busy = false;
-const LS_KEY = "cok-views-data-v3", LS_CAT = "cok-views-catalog";
+const LS_KEY = "cok-views-data-v4", LS_CAT = "cok-views-catalog";
 // Добавляет к данным скрипта зафиксированные дни из frozen.json (школы сопоставляются по названию и региону)
 function withFrozen(j) {
   if (!F || !j || !j.ls) return j;
@@ -1276,7 +1402,10 @@ function withFrozen(j) {
   return o;
 }
 function apply(j) {
-  RAW = j; J = withFrozen(j); X = j.ls ? derive() : null; loaded = true;
+  RAW = j; J = withFrozen(j);
+  // версия 4: views — просмотры (пары «ученик — урок»), newStudents — новые ученики; в версии 3 и в сентябре было поле students
+  for (const k in (J.days || {})) { const d = J.days[k]; if (d.views == null) d.views = d.students || 0; }
+  X = j.ls ? derive() : null; if (X) X.hasS = !!(j.students && j.u1); loaded = true;
   $("updAdmin").textContent = j.latestFile ? "Дашборд обновлён " + new Date(j.latestFile.updated).toLocaleString("ru-RU", { timeZone: "Europe/Moscow", day: "numeric", month: "long" }) + " в " + new Date(j.latestFile.updated).toLocaleTimeString("ru-RU", { timeZone: "Europe/Moscow", hour: "2-digit", minute: "2-digit" }) + " мск" : "";
   render();
 }
@@ -1298,6 +1427,7 @@ async function load() {
     if (j.error) throw new Error(j.error);
     const notes = [];
     if (!j.ls) notes.push("Сайт обновлён, а скрипт Google ещё старой версии: замените код скрипта и запустите refresh, тогда страницы заполнятся.");
+    else if (!j.students) notes.push("Ученики и повторные просмотры появятся после обновления скрипта Google: сейчас показаны только просмотры.");
     if (j.pending) notes.push("Ещё " + j.pending + " " + plural(j.pending, "новый файл ждёт", "новых файла ждут", "новых файлов ждут") + " обработки, цифры обновятся в течение нескольких минут.");
     if (j.errors && j.errors.length) notes.push("Не удалось прочитать: " + j.errors.map(e => "«" + esc(e.file) + "» (" + esc(e.message) + ")").join("; ") + ".");
     status(notes.join(" "), "");

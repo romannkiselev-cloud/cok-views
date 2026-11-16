@@ -1,11 +1,12 @@
 /**
- * Дашборд «Просмотры уроков ЦОК» — сборщик данных из папки Google Диска.
+ * Дашборд «Ученики и просмотры уроков ЦОК» — сборщик данных из папки Google Диска.
  * Раз в 5 минут обрабатывает новые выгрузки и кладёт готовые цифры в data.json в репозитории сайта.
  *
  * Что делает: читает все выгрузки из Metabase (xlsx, csv или Google-таблицы) в папке,
  * склеивает их по дням (для каждого дня берётся самая полная версия) и отдаёт
- * сайту сводные цифры в JSON: просмотры учеников по дням, регионам, школам, курсам, урокам
- * и 15-минутным интервалам, а также число просмотров учителей (строки без региона).
+ * сайту сводные цифры в JSON: учеников (user_id) и просмотры (пары «ученик — урок») по дням,
+ * регионам, школам, курсам, урокам и 15-минутным интервалам, а также просмотры учителей (строки без региона).
+ * Подробно, что как считается, — в комментарии к aggregate_.
  * Учитываются только данные начиная с START_DATE.
  * Уже обработанные файлы запоминаются в служебном файле в той же папке,
  * поэтому каждый файл читается один раз.
@@ -17,7 +18,7 @@ const FOLDER_ID = 'ВСТАВЬТЕ_СЮДА_ID_ПАПКИ';
 const STATE_FILE_NAME = '_dashboard_state.json'; // служебный файл, не удаляйте и не переименовывайте
 const TZ_OFFSET_HOURS = 3;                         // Metabase отдаёт время в UTC, переводим в Москву
 const REFRESH_MINUTES = 5;                         // как часто скрипт сам проверяет папку (после запуска setup)
-const STATE_VERSION = 8;                           // формат служебного файла (6 — с биллингом, 7 — с часами по курсам и школам, 8 — с разбивкой биллинга)
+const STATE_VERSION = 9;                           // формат служебного файла (6 — с биллингом, 7 — с часами по курсам и школам, 8 — с разбивкой биллинга, 9 — ученики и просмотры-пары)
 const START_DATE = '2026-10-06';                   // учитываем данные только с этой даты (мск)
 // Уроки, убранные из каталога «Моей школы» при чистке (октябрь 2026): их просмотры не оплачиваются
 // и в статистику не попадают. Номера уроков у Фоксфорда (lessonProviderId).
@@ -31,6 +32,11 @@ const EXCLUDED_LESSONS = new Set([
 // С 23.10.2026 Metabase отдаёт выгрузку в новом формате (есть колонки timeStart, timeEnd, vua.total_points),
 // и время в ней на 3 часа раньше прежнего: до Москвы нужно прибавить 6 часов, а не 3.
 const TZ_OFFSET_HOURS_NEW = 6;
+// С 16.11.2026 выгрузка «склеенная» (есть колонки user_id и lesson_id): к каждому токену «Моей школы»
+// приклеены ВСЕ уроки, которые этот ученик открывал на Фоксфорде, плюс идут строки активности без токена
+// (их пропускаем: у них нет ни региона, ни школы). У каждого токена свой user_id: токен — это первый вход ученика.
+// Время и баллы для биллинга берутся из строки, где lesson_id совпадает с уроком токена.
+// Время в этом формате такое же, как с 23.10 (+6 часов до Москвы) — сверено по токенам из обеих выгрузок.
 
 // ---------- Биллинг (вкладка закрыта паролем, в data.json эти цифры не попадают) ----------
 // Пароль задаётся в «Настройки проекта» → «Свойства скрипта» под именем BILLING_PASSWORD.
@@ -177,9 +183,13 @@ function cacheGet_() {
 }
 
 /**
- * Что получает сайт (только дни начиная с START_DATE):
- *  days    — по дням: просмотры учеников и учителей, регионы, 15-минутные интервалы (за SLOT_DAYS дней);
+ * Что получает сайт (только дни начиная с START_DATE), версия 4:
+ *  days    — по дням: views — просмотры учеников (пары «ученик — урок»), repeat — из них повторные,
+ *            teachers — просмотры учителей (на сайте не показываются), newStudents — новые ученики;
+ *            regions — просмотры по регионам, slots — по 15 минутам (за SLOT_DAYS дней), ch/sh — по часам местного времени;
  *  ls      — по дням: просмотры в связке «урок | номер школы»; из неё сайт считает курсы, уроки, школы и регионы;
+ *  u1      — по дням: новые ученики по школам («номер школы» → учеников);
+ *  us      — по дням: «курс | номер школы» → ученики, впервые открывшие урок этого курса в этот день;
  *  schools — справочник школ: [название, код региона]; lessonCourse — урок → курс.
  */
 function publicView_(r) {
@@ -193,10 +203,13 @@ function publicView_(r) {
   const sids = Object.keys(sTot).sort(function (a, b) { return sTot[b] - sTot[a]; });
   const idx = {}; sids.forEach(function (x, i) { idx[x] = i; });
   const schools = sids.map(function (x) { const inf = (r.schoolInfo || {})[x] || [x === '?' ? 'Школа не указана' : x, '0']; return [inf[0], inf[1]]; });
-  const days = {}, ls = {};
+  const days = {}, ls = {}, u1 = {}, us = {};
+  let full = true; // все дни посчитаны по-новому (с учениками)
   keys.forEach(function (k) {
     const d = r.days[k];
-    const day = { date: d.date, total: d.total, students: d.students, teachers: d.teachers, firstAt: d.firstAt, lastAt: d.lastAt, regions: d.regions };
+    if (d.views == null) full = false;
+    const day = { date: d.date, total: d.total, views: d.views != null ? d.views : d.students, teachers: d.teachers,
+      repeat: d.repeat, newStudents: d.newStudents, firstAt: d.firstAt, lastAt: d.lastAt, regions: d.regions };
     if (d.ch) day.ch = d.ch; // просмотры по курсам и часам местного времени
     if (d.sh) { // то же по школам; школа — её номер в списке schools
       const sh = {};
@@ -208,9 +221,29 @@ function publicView_(r) {
     const o = {}, m = d.ls || {};
     Object.keys(m).forEach(function (x) { const p = x.indexOf('|'); o[x.slice(0, p) + '|' + idx[x.slice(p + 1)]] = m[x]; });
     ls[k] = o;
+    if (d.u1) { const a = {}; Object.keys(d.u1).forEach(function (s) { if (idx[s] != null) a[idx[s]] = d.u1[s]; }); u1[k] = a; }
+    if (d.us) { const a = {}; Object.keys(d.us).forEach(function (x) { const p = x.indexOf('|'), i = idx[x.slice(p + 1)]; if (i != null) a[x.slice(0, p) + '|' + i] = d.us[x]; }); us[k] = a; }
   });
-  return { version: 3, start: START_DATE, generatedAt: r.generatedAt, filesTotal: r.filesTotal, latestFile: r.latestFile, pending: r.pending, errors: r.errors,
-    days: days, ls: ls, schools: schools, lessonCourse: r.lessonCourse || {} };
+  return { version: 4, start: START_DATE, generatedAt: r.generatedAt, filesTotal: r.filesTotal, latestFile: r.latestFile, pending: r.pending, errors: r.errors,
+    students: full, days: days, ls: ls, u1: u1, us: us, schools: schools, lessonCourse: r.lessonCourse || {} };
+}
+
+/**
+ * Урок → курс из каталога в репозитории сайта (catalog.json): у уроков, которые ученик открыл сам,
+ * а не по токену, курса в выгрузке нет. Если каталог не загрузился, курс берётся только из токенов.
+ */
+let CATALOG_ = null;
+function catalogLessons_() {
+  if (CATALOG_) return CATALOG_;
+  CATALOG_ = {};
+  try {
+    const res = UrlFetchApp.fetch('https://raw.githubusercontent.com/' + GITHUB_REPO + '/' + GITHUB_BRANCH + '/catalog.json', { muteHttpExceptions: true });
+    if (res.getResponseCode() === 200) {
+      const L = JSON.parse(res.getContentText()).lessons || {};
+      Object.keys(L).forEach(function (id) { if (L[id] && L[id][0]) CATALOG_[id] = String(L[id][0]); });
+    }
+  } catch (err) { Logger.log('Каталог уроков не загрузился: ' + err); }
+  return CATALOG_;
 }
 
 function build_(budgetMs) {
@@ -234,7 +267,7 @@ function build_(budgetMs) {
     if (Date.now() - started > budgetMs) { pending++; continue; }
     try {
       const rows = isSheet ? readGoogleSheet_(id) : /\.csv$/i.test(name) ? Utilities.parseCsv(f.getBlob().getDataAsString('UTF-8')) : readXlsx_(f.getBlob());
-      const agg = aggregate_(rows);
+      const agg = aggregate_(rows, catalogLessons_());
       mergeDays_(state.days, agg.days);
       Object.keys(agg.schoolInfo).forEach(function (k) { state.schoolInfo[k] = agg.schoolInfo[k]; });
       Object.keys(agg.lessonCourse).forEach(function (k) { state.lessonCourse[k] = agg.lessonCourse[k]; });
@@ -326,8 +359,21 @@ function toMsk_(v, offH) {
   return new Date(ms + (offH == null ? TZ_OFFSET_HOURS : offH) * 3600000); // читаем через getUTC* — это московское время
 }
 
-/** rows: массив массивов, первая строка — заголовки. */
-function aggregate_(rows) {
+/**
+ * rows: массив массивов, первая строка — заголовки; courseOfLesson — урок → курс из каталога (для уроков, которых нет среди токенов).
+ *
+ * Что считаем (с 16.11.2026):
+ *  ученик   — user_id с регионом (токен — это доступ ученика к платформе; в старых выгрузках без user_id ученик = токен);
+ *             появляется в момент входа (created_at);
+ *  просмотр — пара «ученик — урок»; время — timeStart (с какого-то момента это вход в практическую часть урока),
+ *             а если его нет — created_at (так бывает только у урока, с которого ученик пришёл по токену).
+ *             Повторные открытия того же урока в выгрузке не видны;
+ *  повторный просмотр — второй, третий и следующие уроки одного ученика (по времени просмотра).
+ *  Школа и регион — из токена ученика. Строки без региона — учителя: не учитываются (считаем только их число отдельно).
+ * По дням: просмотры (views, repeat; по регионам, урокам × школам, 15-минуткам, часам), новые ученики
+ * (newStudents; u1 — по школам), us — «курс|школа»: ученики, впервые открывшие урок курса в этот день.
+ */
+function aggregate_(rows, courseOfLesson) {
   if (!rows || rows.length < 2) throw new Error('В файле нет строк с данными');
   const head = rows[0].map(normKey_);
   const find = function (exact, part) { let i = head.indexOf(exact); if (i < 0) i = head.findIndex(function (h) { return part.some(function (p) { return h.indexOf(p) >= 0; }); }); return i; };
@@ -342,57 +388,122 @@ function aggregate_(rows) {
   const isNew = cTS >= 0 && cTE >= 0 && cP >= 0;
   const off = isNew ? TZ_OFFSET_HOURS_NEW : TZ_OFFSET_HOURS;
   if (cT < 0 || cR < 0) throw new Error('Нет колонок created_at и region — выгрузите тот же вопрос из Metabase без изменения колонок');
-  const days = {}, schoolInfo = {}, lessonCourse = {};
+  // склеенный формат (с 16.11.2026): к строке токена приклеены все уроки ученика
+  const cAl = head.indexOf('alias'), cLid = head.indexOf('lessonid'), cU = head.indexOf('userid');
+  const isJoined = cAl >= 0 && cLid >= 0 && cL >= 0 && cU >= 0;
   const str = function (v) { return v == null ? '' : String(v).trim().replace(/\.0+$/, ''); };
-  let minKey = null, bad = 0, maxMs = 0;
+  const schoolInfo = {}, lessonCourse = {};
+  let bad = 0, maxMs = 0;
+
+  // 1. Ученики, их токены и уроки
+  const users = {}, order = [];
+  const addPair = function (u, lid, t, fixed) {
+    if (!lid) return;
+    const p = u.pairs[lid];
+    if (!p) { u.pairs[lid] = { t: t, fixed: fixed }; return; }
+    if (fixed && !p.fixed) { u.pairs[lid] = { t: t, fixed: true }; return; }
+    if (!p.fixed && t < p.t) p.t = t;
+  };
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
+    if (r[cT] == null || r[cT] === '') { if (!isJoined) bad++; continue; } // в склеенной выгрузке — активность без токена
     const t = toMsk_(r[cT], off);
     if (!t) { bad++; continue; }
     if (t.getTime() > maxMs) maxMs = t.getTime();
-    if (cL >= 0 && EXCLUDED_LESSONS.has(str(r[cL]))) continue; // урок убран из каталога МШ
-    const k = t.toISOString().slice(0, 10);
-    const hm = pad_(t.getUTCHours()) + ':' + pad_(t.getUTCMinutes());
-    const rc = parseInt(r[cR], 10), code = isNaN(rc) ? '0' : String(rc);
+    const al = cAl >= 0 ? str(r[cAl]) : '';
+    const uk = isJoined ? (str(r[cU]) || ('a' + al)) : ('r' + i);
+    let u = users[uk];
+    if (!u) {
+      const rc = parseInt(r[cR], 10), code = isNaN(rc) ? '0' : String(rc);
+      const sn = cS >= 0 ? str(r[cS]) : '';
+      // номер школы уникален только внутри региона, поэтому ключ школы — «регион:номер»
+      const sidRaw = (cSid >= 0 ? str(r[cSid]) : '') || sn, sid = sidRaw ? code + ':' + sidRaw : '';
+      if (sid && code !== '0') schoolInfo[sid] = [sn || sid, code];
+      u = users[uk] = { code: code, sid: sid, t0: t, toks: {}, pairs: {} };
+      order.push(uk);
+    }
+    const lid = str(r[cL]), cid = cC >= 0 ? str(r[cC]) : '';
+    if (lid && cid) lessonCourse[lid] = cid;
+    if (t < u.t0) u.t0 = t;
+    const tk = al || ('r' + i);
+    let tok = u.toks[tk];
+    if (!tok) { tok = u.toks[tk] = { t: t, lid: lid, cid: cid, own: isJoined ? null : r }; addPair(u, lid, t, true); }
+    if (isJoined) {
+      const aLid = str(r[cLid]);
+      const ts = toMsk_(r[cTS], off);
+      if (ts && ts.getTime() > maxMs) maxMs = ts.getTime();
+      if (aLid === lid) { // свой урок токена: время просмотра — timeStart, если он есть (иначе остаётся created_at)
+        if (!tok.own) tok.own = r;
+        if (ts && !tok.tsSet) { tok.tsSet = true; u.pairs[lid] = { t: ts, fixed: true }; }
+        continue;
+      }
+      if (aLid && ts) addPair(u, aLid, ts, false);
+    }
+  }
+
+  // 2. Раскладываем по дням
+  const days = {};
+  const courseOf = function (lid) { return lessonCourse[lid] || (courseOfLesson && courseOfLesson[lid]) || ''; };
+  const day = function (k, hm) {
     let d = days[k];
     if (!d) {
-      d = days[k] = { date: k, total: 0, students: 0, teachers: 0, firstAt: hm, lastAt: hm, partialStart: false, regions: {}, ls: {}, slots: [] };
+      d = days[k] = { date: k, total: 0, views: 0, repeat: 0, teachers: 0, newStudents: 0, firstAt: hm, lastAt: hm, partialStart: false,
+        regions: {}, ls: {}, slots: [], ch: {}, sh: {}, u1: {}, us: {} };
       for (let s = 0; s < 96; s++) d.slots.push(0);
       if (isNew) { d.bill = { '1-6': 0, '7-11': 0, unknown: 0 }; d.bR = {}; d.bC = {}; } // уроки, попавшие в биллинг: всего, «регион|классы», по курсам
-      d.ch = {}; // «курс|час по местному времени региона» → просмотры учеников
-      d.sh = {}; // «школа|час по местному времени региона» → просмотры учеников
     }
-    d.total++;
     if (hm < d.firstAt) d.firstAt = hm;
     if (hm > d.lastAt) d.lastAt = hm;
-    if (code === '0') { d.teachers++; continue; } // строки без региона — просмотры учителей
-    d.students++;
-    d.regions[code] = (d.regions[code] || 0) + 1;
-    d.slots[Math.floor((t.getUTCHours() * 60 + t.getUTCMinutes()) / 15)]++;
-    const sn = cS >= 0 ? str(r[cS]) : '';
-    // номер школы уникален только внутри региона, поэтому ключ школы — «регион:номер»
-    const sidRaw = (cSid >= 0 ? str(r[cSid]) : '') || sn, sid = sidRaw ? code + ':' + sidRaw : '';
-    if (sid) schoolInfo[sid] = [sn || sid, code];
-    const cid = cC >= 0 ? str(r[cC]) : '', lid = cL >= 0 ? str(r[cL]) : '';
-    if (lid && cid) lessonCourse[lid] = cid;
-    // Одна связка «урок | школа» даёт всё остальное: курс (через урок) и регион (через школу)
-    if (isNew) billRow_(d, r, cid, cTS, cTE, cP, code);
-    const lh = (t.getUTCHours() + (REGION_UTC[code] != null ? REGION_UTC[code] : 3) - 3 + 24) % 24;
-    if (cid && d.ch) d.ch[cid + '|' + lh] = (d.ch[cid + '|' + lh] || 0) + 1;
-    if (sid && d.sh) d.sh[sid + '|' + lh] = (d.sh[sid + '|' + lh] || 0) + 1;
-    const pk = (lid || '?') + '|' + (sid || '?');
-    d.ls[pk] = (d.ls[pk] || 0) + 1;
-    if (!minKey || k < minKey) minKey = k;
+    return d;
+  };
+  const keyOf = function (t) { return t.toISOString().slice(0, 10); };
+  const hmOf = function (t) { return pad_(t.getUTCHours()) + ':' + pad_(t.getUTCMinutes()); };
+  let minKey = null;
+  for (let j = 0; j < order.length; j++) {
+    const u = users[order[j]], code = u.code, sid = u.sid, teacher = code === '0';
+    const tz = REGION_UTC[code] != null ? REGION_UTC[code] : 3;
+    const firstCourse = {};
+    const lids = Object.keys(u.pairs).filter(function (lid) { return !EXCLUDED_LESSONS.has(lid); }) // урок убран из каталога МШ
+      .sort(function (x, y) { return u.pairs[x].t - u.pairs[y].t; });
+    lids.forEach(function (lid, n) {
+      const t = u.pairs[lid].t, k = keyOf(t), d = day(k, hmOf(t));
+      d.total++;
+      if (teacher) { d.teachers++; return; } // строки без региона — учителя
+      d.views++;
+      if (n > 0) d.repeat++; // второй и следующие уроки ученика
+      d.regions[code] = (d.regions[code] || 0) + 1;
+      d.slots[Math.floor((t.getUTCHours() * 60 + t.getUTCMinutes()) / 15)]++;
+      const cid = courseOf(lid), lh = (t.getUTCHours() + tz - 3 + 24) % 24;
+      if (cid) d.ch[cid + '|' + lh] = (d.ch[cid + '|' + lh] || 0) + 1;
+      if (sid) d.sh[sid + '|' + lh] = (d.sh[sid + '|' + lh] || 0) + 1;
+      const pk = lid + '|' + (sid || '?');
+      d.ls[pk] = (d.ls[pk] || 0) + 1;
+      if (cid && (!firstCourse[cid] || t < firstCourse[cid])) firstCourse[cid] = t;
+      if (!minKey || k < minKey) minKey = k;
+    });
+    if (!teacher) { // ученик — в день входа (created_at)
+      const d = day(keyOf(u.t0), hmOf(u.t0)), s = sid || '?';
+      d.newStudents++;
+      d.u1[s] = (d.u1[s] || 0) + 1;
+      Object.keys(firstCourse).forEach(function (cid) { const dc = days[keyOf(firstCourse[cid])], x = cid + '|' + s; dc.us[x] = (dc.us[x] || 0) + 1; });
+    }
+    // биллинг — по уроку токена, на день входа (как и раньше)
+    if (isNew && !teacher) Object.keys(u.toks).forEach(function (tk) {
+      const tok = u.toks[tk];
+      if (EXCLUDED_LESSONS.has(tok.lid)) return;
+      billRow_(day(keyOf(tok.t), hmOf(tok.t)), tok.own, tok.cid, cTS, cTE, cP, code);
+    });
   }
   if (minKey) days[minKey].partialStart = true; // первый день файла мог начаться не с полуночи
   Object.keys(days).forEach(function (k) { days[k].src = maxMs; }); // момент выгрузки: чем больше, тем свежее
-  return { days: days, schoolInfo: schoolInfo, lessonCourse: lessonCourse, bad: bad };
+  return { days: days, schoolInfo: schoolInfo, lessonCourse: lessonCourse, bad: bad, users: order.length };
 }
 
 /** Засчитывает просмотр ученика в биллинг дня, если он проходит условия. */
 function billRow_(d, r, cid, cTS, cTE, cP, code) {
   const grade = COURSE_GRADES[cid];
   if (!grade) { d.bill.unknown++; return; }
+  if (!r) return;                                         // у токена нет активности по этому уроку — урок не начинали
   const a = toMsk_(r[cTS], 0), b = toMsk_(r[cTE], 0);
   if (!a || !b) return;                                   // урок не начинали
   const minutes = (b.getTime() - a.getTime()) / 60000, norm = BILL_NORM_MIN(grade);
@@ -473,8 +584,168 @@ function readXlsx_(blob) {
   const sheetNames = entries.map(function (e) { return e.name; }).filter(function (n) { return /^xl\/worksheets\/sheet\d+\.xml$/.test(n); });
   if (!sheetNames.length) throw new Error('Не похоже на файл Excel');
   sheetNames.sort(function (a, b) { return parseInt(a.replace(/\D/g, ''), 10) - parseInt(b.replace(/\D/g, ''), 10); });
-  const get = function (n) { const e = entries.filter(function (x) { return x.name === n; })[0]; return e ? e.text() : null; };
-  return parseSheetXml_(get(sheetNames[0]), get('xl/sharedStrings.xml'));
+  const find = function (n) { return entries.filter(function (x) { return x.name === n; })[0] || null; };
+  const sheet = find(sheetNames[0]), sstEntry = find('xl/sharedStrings.xml');
+  const sst = parseSst_(sstEntry ? sstEntry.text() : null);
+  // Небольшие листы — проверенным способом (Utilities.ungzip). Большие (склеенная выгрузка с 16.11 —
+  // около 150 МБ текста) так не распаковать: у Apps Script лимит 50 МБ на blob. Их распаковываем сами
+  // кусками по 1 МБ и сразу разбираем строки, не держа весь текст листа в памяти.
+  if (sheet.usize <= XLSX_STREAM_FROM) return parseSheetXml_(sheet.text(), sst);
+  return readSheetStream_(sheet, sst);
+}
+
+const XLSX_STREAM_FROM = 30 * 1024 * 1024; // с какого размера листа (байт без сжатия) читаем его кусками
+
+/**
+ * Потоковое чтение листа. Чтобы не тратить память на строки, которые всё равно не нужны,
+ * оставляем только строки с заполненным created_at (если такая колонка есть): в склеенной
+ * выгрузке две трети строк — активность на Фоксфорде без токена «Моей школы».
+ */
+function readSheetStream_(entry, sst) {
+  const rows = [];
+  let cT = -1, text = '';
+  const keep = function (row) {
+    if (!rows.length) { cT = row.map(normKey_).indexOf('createdat'); rows.push(row); return; }
+    if (cT < 0 || (row[cT] != null && row[cT] !== '')) rows.push(row);
+  };
+  const dec = utf8Decoder_();
+  const feed = function (bytes, last) {
+    text += dec(bytes, last);
+    const e = text.lastIndexOf('</row>');
+    if (e < 0) return;
+    parseRows_(text.slice(0, e + 6), sst, keep);
+    text = text.slice(e + 6);
+  };
+  if (entry.method === 0) feed(entry.raw(), true);
+  else if (entry.method === 8) { inflateRaw_(entry.raw(), function (chunk) { feed(chunk, false); }); feed(new Uint8Array(0), true); }
+  else throw new Error('Неизвестный способ сжатия в xlsx: ' + entry.method);
+  return rows;
+}
+
+/** Декодер UTF-8 для кусков: символ, разрезанный границей куска, доклеивается к следующему. */
+function utf8Decoder_() {
+  let carry = null;
+  return function (u8, last) {
+    let a = u8;
+    if (carry) { a = new Uint8Array(carry.length + u8.length); a.set(carry); a.set(u8, carry.length); carry = null; }
+    let end = a.length;
+    if (!last && end) {
+      let i = end - 1, k = 0;
+      while (i > 0 && k < 3 && (a[i] & 0xc0) === 0x80) { i--; k++; }
+      const c = a[i], need = c >= 0xf0 ? 4 : c >= 0xe0 ? 3 : c >= 0xc0 ? 2 : 1;
+      if (end - i < need) end = i;
+    }
+    if (end < a.length) carry = a.slice(end);
+    const units = new Uint16Array(end);
+    let n = 0;
+    for (let i = 0; i < end;) {
+      let c = a[i++];
+      if (c >= 0xf0) {
+        c = (((c & 0x07) << 18) | ((a[i++] & 0x3f) << 12) | ((a[i++] & 0x3f) << 6) | (a[i++] & 0x3f)) - 0x10000;
+        units[n++] = 0xd800 + (c >> 10); c = 0xdc00 + (c & 0x3ff);
+      } else if (c >= 0xe0) c = ((c & 0x0f) << 12) | ((a[i++] & 0x3f) << 6) | (a[i++] & 0x3f);
+      else if (c >= 0xc0) c = ((c & 0x1f) << 6) | (a[i++] & 0x3f);
+      units[n++] = c;
+    }
+    let s = '';
+    for (let i = 0; i < n; i += 8192) s += String.fromCharCode.apply(null, units.subarray(i, Math.min(n, i + 8192)));
+    return s;
+  };
+}
+
+/**
+ * Распаковка deflate (RFC 1951) кусками: onChunk получает очередные ≤ 1 МБ распакованных байт
+ * (Uint8Array; использовать сразу, буфер потом перезаписывается).
+ */
+function inflateRaw_(inp, onChunk) {
+  const W = 32768, CH = 1 << 20, buf = new Uint8Array(W + CH);
+  let op = 0, from = 0, ip = 0, bb = 0, bc = 0;
+  const flush = function () {
+    if (op > from) onChunk(buf.subarray(from, op));
+    if (op > W) { buf.copyWithin(0, op - W, op); op = W; }
+    from = op;
+  };
+  const need = function (n) { while (bc < n) { bb |= (ip < inp.length ? inp[ip] : 0) << bc; ip++; bc += 8; } };
+  const bits = function (n) { if (!n) return 0; need(n); const v = bb & ((1 << n) - 1); bb >>>= n; bc -= n; return v; };
+  const build = function (lens, n) {
+    let max = 0;
+    for (let i = 0; i < n; i++) if (lens[i] > max) max = lens[i];
+    const cnt = new Uint16Array(16), next = new Uint16Array(16);
+    for (let i = 0; i < n; i++) cnt[lens[i]]++;
+    cnt[0] = 0;
+    let code = 0;
+    for (let b = 1; b <= 15; b++) { code = (code + cnt[b - 1]) << 1; next[b] = code; }
+    const m = max || 1, size = 1 << m, tab = new Int32Array(size);
+    for (let i = 0; i < n; i++) {
+      const l = lens[i];
+      if (!l) continue;
+      let c = next[l]++, r = 0;
+      for (let k = 0; k < l; k++) { r = (r << 1) | (c & 1); c >>= 1; }
+      for (let j = r; j < size; j += 1 << l) tab[j] = (i << 4) | l;
+    }
+    return { t: tab, m: m };
+  };
+  const dec = function (h) {
+    need(h.m);
+    const e = h.t[bb & ((1 << h.m) - 1)], l = e & 15;
+    if (!l) throw new Error('Файл повреждён: ошибка в сжатых данных xlsx');
+    bb >>>= l; bc -= l;
+    return e >> 4;
+  };
+  const LB = [3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258];
+  const LE = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0];
+  const DB = [1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577];
+  const DE = [0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13];
+  const ORD = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15];
+  let fixL = null, fixD = null, last = 0;
+  while (!last) {
+    last = bits(1);
+    const type = bits(2);
+    if (type === 0) {                                   // блок без сжатия
+      bits(bc & 7);
+      const len = bits(16); bits(16);
+      for (let k = 0; k < len; k++) {
+        let v;
+        if (bc >= 8) v = bits(8); else v = inp[ip++];
+        buf[op++] = v; if (op === buf.length) flush();
+      }
+      continue;
+    }
+    let L, D;
+    if (type === 1) {                                   // фиксированные коды
+      if (!fixL) {
+        const l = new Uint8Array(288), d = new Uint8Array(30);
+        for (let i = 0; i < 288; i++) l[i] = i < 144 ? 8 : i < 256 ? 9 : i < 280 ? 7 : 8;
+        for (let i = 0; i < 30; i++) d[i] = 5;
+        fixL = build(l, 288); fixD = build(d, 30);
+      }
+      L = fixL; D = fixD;
+    } else if (type === 2) {                            // свои коды в начале блока
+      const hl = bits(5) + 257, hd = bits(5) + 1, hc = bits(4) + 4;
+      const cl = new Uint8Array(19);
+      for (let i = 0; i < hc; i++) cl[ORD[i]] = bits(3);
+      const C = build(cl, 19), lens = new Uint8Array(hl + hd);
+      for (let i = 0; i < hl + hd;) {
+        const s = dec(C);
+        if (s < 16) { lens[i++] = s; continue; }
+        let rep, v = 0;
+        if (s === 16) { if (!i) throw new Error('Файл повреждён: ошибка в сжатых данных xlsx'); v = lens[i - 1]; rep = 3 + bits(2); }
+        else if (s === 17) rep = 3 + bits(3);
+        else rep = 11 + bits(7);
+        while (rep-- && i < hl + hd) lens[i++] = v;
+      }
+      L = build(lens.subarray(0, hl), hl); D = build(lens.subarray(hl), hd);
+    } else throw new Error('Файл повреждён: ошибка в сжатых данных xlsx');
+    for (;;) {
+      const s = dec(L);
+      if (s < 256) { buf[op++] = s; if (op === buf.length) flush(); continue; }
+      if (s === 256) break;
+      const li = s - 257, len = LB[li] + bits(LE[li]);
+      const di = dec(D), dist = DB[di] + bits(DE[di]);
+      for (let k = 0; k < len; k++) { buf[op] = buf[op - dist]; op++; if (op === buf.length) flush(); }
+    }
+  }
+  flush();
 }
 
 /**
@@ -504,10 +775,18 @@ function unzipEntries_(blob) {
     p += 46 + nl + xl + cl;
   }
   return list.map(function (en) {
+    const begin = function () { return en.local + 30 + u16(en.local + 26) + u16(en.local + 28); };
     return {
       name: en.name,
+      method: en.method,
+      usize: en.usize,
+      raw: function () { // сжатые данные как Uint8Array — для потоковой распаковки
+        const start = begin(), out = new Uint8Array(en.csize);
+        for (let i = 0; i < en.csize; i++) out[i] = b[start + i] & 0xff;
+        return out;
+      },
       text: function () {
-        const start = en.local + 30 + u16(en.local + 26) + u16(en.local + 28);
+        const start = begin();
         const data = b.slice(start, start + en.csize);
         if (en.method === 0) return Utilities.newBlob(data).getDataAsString('UTF-8');
         if (en.method !== 8) throw new Error('Неизвестный способ сжатия в xlsx: ' + en.method);
@@ -541,10 +820,20 @@ function colIndex_(ref) {
   return n - 1;
 }
 
-function parseSheetXml_(xml, sstXml) {
+function parseSst_(sstXml) {
   const sst = [];
   if (sstXml) { let m; const re = /<si>([\s\S]*?)<\/si>/g; while ((m = re.exec(sstXml))) sst.push(joinT_(m[1])); }
+  return sst;
+}
+
+function parseSheetXml_(xml, sst) {
   const rows = [];
+  parseRows_(xml, sst, function (row) { rows.push(row); });
+  return rows;
+}
+
+/** Разбирает строки листа из куска XML (кусок должен заканчиваться на </row>) и отдаёт их по одной. */
+function parseRows_(xml, sst, onRow) {
   const rowRe = /<row\b[^>]*>([\s\S]*?)<\/row>/g;
   const cellRe = /<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g;
   let rm;
@@ -573,7 +862,6 @@ function parseSheetXml_(xml, sstXml) {
       row[col] = v;
     }
     for (let i = 0; i < row.length; i++) if (row[i] === undefined) row[i] = null;
-    rows.push(row);
+    onRow(row);
   }
-  return rows;
 }
