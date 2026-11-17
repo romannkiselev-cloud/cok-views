@@ -166,6 +166,9 @@ details.panel[open] summary { margin-bottom: 12px; }
 .lockbox .err { color: var(--bad); font-size: 14px; }
 .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
 @media (max-width: 1100px) { .grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.grid5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 1100px) { .grid5 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .grid5 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) { .grid4 { grid-template-columns: minmax(0, 1fr); } }
 .kpi.bill .value { font-size: clamp(24px, 2.2vw, 30px); white-space: nowrap; letter-spacing: -0.01em; }
 .kpi.bill-total { background: var(--accent-wash); border-color: var(--accent-soft); }
@@ -923,12 +926,17 @@ function regionStats() {
       add(sday[si] || (sday[si] = {}), k, v); add(scourse[si] || (scourse[si] = {}), lessonCourseOf(lid) || "?", v);
     }
   }
-  return (RG = { X, day, course, lesson, school, sday, scourse });
+  // ученики: регион и школа — по школе ученика, в день его первого входа (с начала учёта учеников)
+  const stu = {}, sstu = {}, stuW = {}, stuP = {}, sstuW = {}, sstuP = {};
+  if (X.hasS) for (const k of X.keys) { const u = J.u1[k]; if (!u) continue; const inW = k >= X.w7From && k <= X.w7To, inP = k >= X.p7From && k <= X.p7To;
+    for (const si in u) { const rn = X.regOfSchool[si] || "Регион не указан"; add(stu, rn, u[si]); add(sstu, si, u[si]);
+      if (inW) { add(stuW, rn, u[si]); add(sstuW, si, u[si]); } if (inP) { add(stuP, rn, u[si]); add(sstuP, si, u[si]); } } }
+  return (RG = { X, day, course, lesson, school, sday, scourse, stu, sstu, stuW, stuP, sstuW, sstuP });
 }
 function regionRows() {
   const G = regionStats(), names = [...new Set(SUBJECT_CODES.map(c => REGIONS[c]))];
   return names.map(n => { const sc = G.school[n] || {};
-    return { id: n, name: n, total: X.E.region[n] || 0, week: X.W7.region[n] || 0, prev: X.P7.region[n] || 0,
+    return { id: n, name: n, students: G.stu[n] || 0, tip: tip7(X.W7.region[n] || 0, X.P7.region[n] || 0, G.stuW[n] || 0, G.stuP[n] || 0), total: X.E.region[n] || 0, week: X.W7.region[n] || 0, prev: X.P7.region[n] || 0,
       diff: X.hasP7 ? (X.W7.region[n] || 0) - (X.P7.region[n] || 0) : null, schools: Object.keys(sc).length,
       perSchool: Object.keys(sc).length ? (X.E.region[n] || 0) / Object.keys(sc).length : null,
       pct: !X.hasP7 ? null : (X.P7.region[n] || 0) ? ((X.W7.region[n] || 0) - X.P7.region[n]) / X.P7.region[n] * 100 : ((X.W7.region[n] || 0) ? Infinity : null),
@@ -936,23 +944,31 @@ function regionRows() {
 }
 // Изменение за 7 дней: ▲ рост / ▼ падение и на сколько процентов
 const wk = (r, ok) => {
-  if (!ok || r.pct == null) return "<span class='wk flat'>—</span>";
-  if (r.pct === Infinity) return "<span class='wk up'>▲ новый</span>";
+  const t = r.tip ? ' title="' + esc(r.tip) + '"' : "";
+  if (!ok || r.pct == null) return "<span class='wk flat'" + t + ">—</span>";
+  if (r.pct === Infinity) return "<span class='wk up'" + t + ">▲ новый</span>";
   const p = Math.round(r.pct), cls = p > 0 ? "up" : p < 0 ? "down" : "flat";
-  return "<span class='wk " + cls + "'>" + (p > 0 ? "▲ +" + p : p < 0 ? "▼ −" + Math.abs(p) : "= 0") + "%</span>";
+  return "<span class='wk " + cls + "'" + t + ">" + (p > 0 ? "▲ +" + p : p < 0 ? "▼ −" + Math.abs(p) : "= 0") + "%</span>";
 };
+// Подсказка к изменению за 7 дней: просмотры и новые ученики — в штуках и процентах
+const pctOf = (w, p) => p ? (w - p) / p * 100 : (w ? Infinity : null);
+const diffTxt = (w, p) => { const d = w - p; return (d > 0 ? "+" : d < 0 ? "−" : "") + fmt(Math.abs(d)) + (p ? " (" + (d > 0 ? "+" : d < 0 ? "−" : "") + Math.round(Math.abs(d) / p * 100) + "%)" : w ? " (раньше не было)" : ""); };
+const tip7 = (vw, vp, sw, sp) => !X.hasP7 ? "" :
+  "Просмотры: " + fmt(vw) + " за " + w7Label() + " и " + fmt(vp) + " за " + p7Label() + " → " + diffTxt(vw, vp) +
+  (X.hasS && sw != null ? "\nНовые ученики: " + fmt(sw) + " и " + fmt(sp) + " → " + diffTxt(sw, sp) : "");
 function renderRegions() {
   const ok = X.hasP7, q = ($("regSearch").value || "").trim().toLowerCase();
   const rows = regionRows(), shown = q ? rows.filter(r => r.name.toLowerCase().includes(q)) : rows;
-  $("regTableCap").innerHTML = "<p>Все 89 субъектов, включая те, где просмотров учеников пока нет.</p><p>Просмотров на школу — все просмотры учеников региона, делённые на число школ, где их открывали хотя бы раз.</p><p>7 дней — " + w7Label() + "; треугольник — изменение к предыдущим 7 дням (" + p7Label() + ").</p><p>Нажмите на заголовок столбца, чтобы отсортировать, на регион — чтобы открыть подробности.</p>";
+  $("regTableCap").innerHTML = "<p>Все 89 субъектов, включая те, где просмотров учеников пока нет.</p><p>Просмотров на школу — все просмотры учеников региона, делённые на число школ, где их открывали хотя бы раз.</p><p>Треугольник — изменение просмотров за последние 7 дней (" + w7Label() + ") к предыдущим 7 дням (" + p7Label() + ").</p>" +
+    (X.hasS ? "<p>Учеников всего — с " + longDate(LIVE_START) + ", по дате первого входа; просмотры — с " + longDate(X.first) + ".</p>" : "") + "<p>Нажмите на заголовок столбца, чтобы отсортировать, на регион — чтобы открыть подробности.</p>";
   const st = ui.reg;
   sortTable($("regTable"), [
     { k: "name", label: "Регион" },
-    { k: "total", label: "Всего просмотров", num: true },
+    ...(X.hasS ? [{ k: "students", label: "Учеников всего", num: true }] : []),
+    { k: "total", label: "Просмотров всего", num: true },
     { k: "schools", label: "Всего школ", num: true },
     { k: "perSchool", label: "Просмотров на школу", num: true, html: r => r.perSchool == null ? "<span class='wk flat'>—</span>" : r.perSchool.toLocaleString("ru-RU", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) },
-    { k: "week", label: "За 7 дней", num: true },
-    { k: "pct", label: "К пред. 7 дням", num: true, html: r => wk(r, ok) }
+    { k: "pct", label: "Просмотры к пред. 7 дням", num: true, html: r => wk(r, ok) }
   ], shown, st, { numbered: true, rerender: renderRegions, onRow: id => openRegion(id) });
   $("regTable").querySelectorAll("tbody tr").forEach(tr => { const r = rows.find(x => x.id === tr.dataset.id); if (r && !r.total) tr.classList.add("zero"); });
 }
@@ -986,8 +1002,9 @@ function renderRegionModal() {
   const yk = X.latestDone ? X.latest : addDays(X.latest, -1), pk = addDays(yk, -7);
   const sc = G.school[n] || {}, act = Object.values(sc).filter(x => x.week > 0).length;
   const tile = (label, value, meta) => "<section class='panel kpi small'><div class='label'>" + label + "</div><div class='value'>" + value + "</div>" + (meta ? "<div class='meta'><span>" + meta + "</span></div>" : "") + "</section>";
-  $("rmKpi").innerHTML =
-    tile("Всего просмотров учеников", fmt(total)) +
+  $("rmKpi").className = X.hasS ? "grid5" : "grid4";
+  $("rmKpi").innerHTML = (X.hasS ? tile("Учеников всего", fmt(G.stu[n] || 0), "с " + shortDate(LIVE_START)) : "") +
+    tile(X.hasS ? "Просмотров всего" : "Всего просмотров учеников", fmt(total)) +
     tile("За " + MONTHS_N[mi].toLowerCase(), mT == null ? "—" : fmt(mT) + (mBase ? trend(mT, mBase, mLab) : "")) +
     tile("За " + longDate(yk), fmt(val(yk)) + (X.days[pk] ? trend(val(yk), val(pk), "к " + ["понедельнику","вторнику","среде","четвергу","пятнице","субботе","воскресенью"][dow(pk)] + " " + longDate(pk)) : "")) +
     tile("Школ", fmt(Object.keys(sc).length), fmt(act) + " " + plural(act, "активна", "активны", "активны") + " за 7 дней");
@@ -995,15 +1012,15 @@ function renderRegionModal() {
   const cs = G.course[n] || {};
   renderRank("rmCourses", sortEntries(cs).slice(0, 10).map(([c, v]) => [courseName(c), v]), sumVals(cs), "Просмотров нет");
   // школы: нажатие на строку раскрывает подробности школы прямо под ней
-  const srows = Object.entries(sc).map(([si, x]) => ({ id: si, name: X.schools[si][0], total: x.total, week: x.week, prev: x.prev,
+  const srows = Object.entries(sc).map(([si, x]) => ({ id: si, name: X.schools[si][0], students: G.sstu[si] || 0, total: x.total, week: x.week, prev: x.prev, tip: tip7(x.week, x.prev, G.sstuW[si] || 0, G.sstuP[si] || 0),
     pct: !X.hasP7 ? null : x.prev ? (x.week - x.prev) / x.prev * 100 : (x.week ? Infinity : null) }));
   $("rmSchTitle").textContent = "Школы региона · " + fmt(srows.length);
-  $("rmSchCap").innerHTML = "<p>7 дней — " + w7Label() + "; треугольник — изменение к предыдущим 7 дням (" + p7Label() + ").</p><p>Нажмите на школу, чтобы раскрыть график и курсы, ещё раз — чтобы свернуть. На заголовок столбца — чтобы отсортировать.</p>";
+  $("rmSchCap").innerHTML = "<p>Треугольник — изменение просмотров за последние 7 дней (" + w7Label() + ") к предыдущим 7 дням (" + p7Label() + ").</p>" + (X.hasS ? "<p>Учеников всего — с " + longDate(LIVE_START) + ", по дате первого входа.</p>" : "") + "<p>Нажмите на школу, чтобы раскрыть график и курсы, ещё раз — чтобы свернуть. На заголовок столбца — чтобы отсортировать.</p>";
   const st = ui.regSch || (ui.regSch = { sort: "total", dir: -1, limit: 30 });
   if (st.sel && !sc[st.sel]) st.sel = null;
   const cols = [
-    { k: "name", label: "Школа" }, { k: "total", label: "Всего", num: true }, { k: "week", label: "За 7 дней", num: true },
-    { k: "pct", label: "К пред. 7 дням", num: true, html: r => wk(r, X.hasP7) }
+    { k: "name", label: "Школа" }, ...(X.hasS ? [{ k: "students", label: "Учеников всего", num: true }] : []), { k: "total", label: X.hasS ? "Просмотров всего" : "Всего", num: true },
+    { k: "pct", label: "Просмотры к пред. 7 дням", num: true, html: r => wk(r, X.hasP7) }
   ];
   const draw = () => {
     const q = ($("rmSchSearch").value || "").trim().toLowerCase(), shown = q ? srows.filter(r => r.name.toLowerCase().includes(q)) : srows;
@@ -1013,7 +1030,7 @@ function renderRegionModal() {
     const d = document.createElement("tr"); d.className = "sc-detail";
     const x = sc[st.sel];
     d.innerHTML = "<td colspan='" + (cols.length + 1) + "'><div class='sc-box'>" +
-      "<div class='sc-head'><b>" + esc(X.schools[st.sel][0]) + "</b><span>всего " + fmt(x.total) + " · за 7 дней " + fmt(x.week) + " · первый просмотр " + shortDate(x.first) + ", последний " + shortDate(x.last) + "</span><button type='button' class='xlbtn sm' id='scXl'>Скачать школу в Excel</button></div>" +
+      "<div class='sc-head'><b>" + esc(X.schools[st.sel][0]) + "</b><span>" + (X.hasS ? "учеников " + fmt(G.sstu[st.sel] || 0) + " · просмотров " : "просмотров ") + fmt(x.total) + " · " + wk(srows.find(r => r.id === st.sel), X.hasP7) + " просмотров к пред. 7 дням · первый просмотр " + shortDate(x.first) + ", последний " + shortDate(x.last) + "</span><button type='button' class='xlbtn sm' id='scXl'>Скачать школу в Excel</button></div>" +
       "<div class='mbar' id='scNav' role='group' aria-label='Месяц на графике школы'><button type='button' class='mbtn' data-d='-1' aria-label='Предыдущий месяц'>‹</button><div class='mtabs' id='scMonths'></div><button type='button' class='mbtn' data-d='1' aria-label='Следующий месяц'>›</button></div>" +
       "<div class='big' id='scBig'></div>" +
       "<h3 class='sc-sub with-info'>Просмотры по часам · в среднем за день <span class='info' tabindex='0' role='button' aria-label='Пояснение'>i<span class='info-pop' role='tooltip' id='scHoursInfo'></span></span></h3><div class='chart' id='scHours'></div>" +
@@ -1165,15 +1182,16 @@ function cmpCaption() { return X.hasP7 ? "7 дней — " + w7Label() + ", ср
 function renderCourses() {
   const ok = X.hasP7;
   const ids = new Set(Object.keys(X.E.course)); if (C.cokCourses) C.cokCourses.forEach(c => ids.add(String(c)));
-  const rows = [...ids].filter(c => c !== "?").map(c => ({ id: c, name: courseName(c), total: X.E.course[c] || 0, week: X.W7.course[c] || 0, prev: X.P7.course[c] || 0,
-    diff: ok ? (X.W7.course[c] || 0) - (X.P7.course[c] || 0) : null }));
-  $("crsCap").textContent = "Все курсы, включая те, где просмотров пока нет. " + cmpCaption() + " Нажмите на заголовок столбца, чтобы отсортировать, на курс — чтобы открыть подробности.";
+  const CS = courseStats();
+  const rows = [...ids].filter(c => c !== "?").map(c => { const w = X.W7.course[c] || 0, p = X.P7.course[c] || 0;
+    return { id: c, name: courseName(c), students: CS.stu[c] || 0, total: X.E.course[c] || 0, week: w, prev: p, pct: ok ? pctOf(w, p) : null, tip: tip7(w, p, CS.stuW[c] || 0, CS.stuP[c] || 0) }; });
+  $("crsCap").textContent = "Все курсы, включая те, где просмотров пока нет. " + cmpCaption() + (X.hasS ? " Учеников всего — сколько разных учеников открыли хотя бы один урок курса (с " + longDate(LIVE_START) + "); просмотры — с " + longDate(X.first) + "." : "") + " Нажмите на заголовок столбца, чтобы отсортировать, на курс — чтобы открыть подробности.";
   const q = ($("crsSearch").value || "").trim().toLowerCase(), shown = q ? rows.filter(r => r.name.toLowerCase().includes(q)) : rows;
   sortTable($("crsTable"), [
     { k: "name", label: "Курс" },
-    { k: "total", label: "Всего", num: true },
-    { k: "week", label: "За 7 дней", num: true },
-    { k: "diff", label: "Изм.", num: true, html: r => chg(r.week, r.prev, ok) }
+    ...(X.hasS ? [{ k: "students", label: "Учеников всего", num: true }] : []),
+    { k: "total", label: "Просмотров всего", num: true },
+    { k: "pct", label: "Просмотры к пред. 7 дням", num: true, html: r => wk(r, ok) }
   ], shown, ui.crs, { numbered: true, rerender: renderCourses, onRow: id => openCourse(id) });
 }
 $("crsSearch").addEventListener("input", () => { if (X) renderCourses(); });
@@ -1186,7 +1204,10 @@ function courseStats() { // курс → {день: просмотры}, шко�
   for (const k of X.keys) { const m = J.ls[k] || {};
     for (const pk in m) { const p = pk.indexOf("|"), c = lessonCourseOf(pk.slice(0, p)) || "?", si = pk.slice(p + 1);
       add(day[c] || (day[c] = {}), k, m[pk]); (sch[c] || (sch[c] = new Set())).add(si); (reg[c] || (reg[c] = new Set())).add(X.regOfSchool[si]); } }
-  return (CG = { X, day, sch, reg });
+  const stu = {}, stuW = {}, stuP = {}; // ученики курса — разные ученики, открывшие хотя бы один урок курса (с начала учёта учеников)
+  if (X.hasS) for (const k of X.keys) { const m = J.us[k]; if (!m) continue; const inW = k >= X.w7From && k <= X.w7To, inP = k >= X.p7From && k <= X.p7To;
+    for (const x in m) { const c = x.slice(0, x.indexOf("|")); add(stu, c, m[x]); if (inW) add(stuW, c, m[x]); if (inP) add(stuP, c, m[x]); } }
+  return (CG = { X, day, sch, reg, stu, stuW, stuP });
 }
 let cmId = null, cmMonth = null;
 function openCourse(c) { cmId = c; cmMonth = null; $("crsModal").hidden = false; document.body.classList.add("modal-open"); renderCourseModal(); $("crsModal").scrollTop = 0; $("cmClose").focus(); }
