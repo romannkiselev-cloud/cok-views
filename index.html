@@ -344,14 +344,14 @@ td.peak b { font-weight: 600; }
       </div>
       <div class="grid4" id="rmKpi"></div>
       <section class="panel">
-        <h2 class="with-info">Просмотры учеников по дням <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip"><p>Даты каникул 2026/27: по четвертям — рекомендации Минпросвещения, по модульной системе 5+1 — типовой график. В регионах и школах даты могут отличаться.</p><p>Сентябрь — по отчёту «Моей школы» (пары «ученик — урок» по дате первого просмотра).</p></span></span></h2>
+        <h2 class="with-info">Ученики и просмотры по дням <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip"><p>Даты каникул 2026/27: по четвертям — рекомендации Минпросвещения, по модульной системе 5+1 — типовой график. В регионах и школах даты могут отличаться.</p><p>Сентябрь — по отчёту «Моей школы» (пары «ученик — урок» по дате первого просмотра).</p></span></span></h2>
         <div class="mbar" id="rmNav" role="group" aria-label="Месяц на графике">
           <button type="button" class="mbtn" data-d="-1" aria-label="Предыдущий месяц">‹</button>
           <div class="mtabs" id="rmMonths"></div>
           <button type="button" class="mbtn" data-d="1" aria-label="Следующий месяц">›</button>
         </div>
         <div class="big" id="rmBig"></div>
-        <div class="legend"><span><i style="background:var(--accent)"></i>за день</span><span><i style="background:var(--accent-soft)"></i>день ещё идёт</span><span><i style="background:var(--s1);height:3px;vertical-align:3px"></i>всего нарастающим итогом</span><span><i style="background:var(--hq);box-shadow:inset 0 0 0 1px var(--hq-bar)"></i>четвертные каникулы</span><span><i style="background:var(--hm);box-shadow:inset 0 0 0 1px var(--hm-bar)"></i>модульные каникулы</span></div>
+        <div class="legend" id="rmLegend"></div>
       </section>
       <section class="panel"><h2 class="with-info">Топ курсов <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip">Просмотры учеников региона за всё время наблюдения.</span></span></h2><ol class="rank" id="rmCourses"></ol></section>
       <section class="panel"><div class="panel-head" style="margin-bottom:12px"><h2 class="with-info" style="margin:0 !important"><span id="rmSchTitle">Школы региона</span> <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="rmSchCap"></span></span></h2><input type="search" id="rmSchSearch" class="regsearch" placeholder="Найти школу" aria-label="Найти школу в регионе"></div><div class="scroll" id="rmSchools"></div></section>
@@ -368,14 +368,14 @@ td.peak b { font-weight: 600; }
       </div>
       <div class="grid4" id="cmKpi"></div>
       <section class="panel">
-        <h2 class="with-info">Просмотры учеников по дням <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip"><p>Сентябрь — по отчёту «Моей школы» (пары «ученик — урок» по дате первого просмотра).</p><p>Даты каникул: по четвертям — рекомендации Минпросвещения, по модульной системе 5+1 — типовой график.</p></span></span></h2>
+        <h2 class="with-info">Ученики и просмотры по дням <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip"><p>Сентябрь — по отчёту «Моей школы» (пары «ученик — урок» по дате первого просмотра).</p><p>Даты каникул: по четвертям — рекомендации Минпросвещения, по модульной системе 5+1 — типовой график.</p></span></span></h2>
         <div class="mbar" id="cmNav" role="group" aria-label="Месяц на графике">
           <button type="button" class="mbtn" data-d="-1" aria-label="Предыдущий месяц">‹</button>
           <div class="mtabs" id="cmMonths"></div>
           <button type="button" class="mbtn" data-d="1" aria-label="Следующий месяц">›</button>
         </div>
         <div class="big" id="cmBig"></div>
-        <div class="legend"><span><i style="background:var(--accent)"></i>за день</span><span><i style="background:var(--accent-soft)"></i>день ещё идёт</span><span><i style="background:var(--s1);height:3px;vertical-align:3px"></i>всего нарастающим итогом</span><span><i style="background:var(--hq);box-shadow:inset 0 0 0 1px var(--hq-bar)"></i>четвертные каникулы</span><span><i style="background:var(--hm);box-shadow:inset 0 0 0 1px var(--hm-bar)"></i>модульные каникулы</span></div>
+        <div class="legend" id="cmLegend"></div>
       </section>
       <section class="panel">
         <h2 class="with-info"><span id="cmHoursTitle">Просмотры по часам</span> <span class="info" tabindex="0" role="button" aria-label="Пояснение">i<span class="info-pop" role="tooltip" id="cmHoursInfo"></span></span></h2>
@@ -778,8 +778,13 @@ function comboChart(o) {
 const stuOf = k => X.hasS && J.u1[k] ? (X.days[k].newStudents || 0) : null;
 const repOf = k => X.hasS && J.u1[k] && X.days[k].repeat != null ? X.days[k].repeat : null;
 const viewsOf = k => X.days[k] ? (X.days[k].views || 0) : 0;
-function renderBig() {
-  const el = $("big"), S = X.hasS;
+// График «по дням» — на «Общей», в окнах региона и курса и в карточке школы.
+// Сверху нарастающим итогом: ученики и просмотры; снизу за день узкие столбики рядом: новые ученики, просмотры и (на «Общей») повторные.
+// o: el, months, nav, plotId, month; views(k), stu(k) → число или null (учеников нет), rep(k) — повторные или не задано;
+// legend, info — куда писать легенду и пояснение; caption — подписи месяцев с числом просмотров. Возвращает показанный месяц.
+function duoChart(o) {
+  const el = o.el, S = X.hasS && !!o.stu; let bigMonth = o.month;
+  const viewsOf = o.views, stuOf = k => S ? o.stu(k) : null, repOf = k => o.rep ? o.rep(k) : null, PID = o.plotId;
   const mFirst = X.first.slice(0, 7), mLast = CHART_END.slice(0, 7);
   if (!bigMonth) bigMonth = (X.latestDone ? X.latest : addDays(X.latest, -1)).slice(0, 7); // по умолчанию — месяц последнего полного дня
   bigMonth = bigMonth < mFirst ? mFirst : bigMonth > mLast ? mLast : bigMonth;
@@ -788,11 +793,12 @@ function renderBig() {
   for (let k = mStart; k.slice(0, 7) === bigMonth; k = addDays(k, 1)) if (!gap(k)) dates.push(k);
   const months = []; for (let mm = mFirst; mm <= mLast; mm = (d => (d.setUTCMonth(d.getUTCMonth() + 1), d.toISOString().slice(0, 7)))(pDate(mm + "-01"))) months.push(mm);
   const mSum = (mm, f) => { let t = 0, any = false; for (const k of X.keys) if (k.slice(0, 7) === mm) { const v = f(k); if (v != null) { t += v; any = true; } } return any ? t : null; };
-  $("bigMonths").innerHTML = months.map(mm => { const v = mSum(mm, viewsOf); // месяц без данных — бледный
-    return "<button type='button' class='mtab" + (v == null ? " empty" : "") + "' data-m='" + mm + "' aria-pressed='" + (mm === bigMonth) + "'><b>" + MONTHS_N[+mm.slice(5) - 1] + "</b></button>"; }).join("");
-  const act = $("bigMonths").querySelector("[aria-pressed='true']"); if (act) act.scrollIntoView({ block: "nearest", inline: "nearest" });
-  $("bigNav").querySelector("[data-d='-1']").disabled = bigMonth <= mFirst;
-  $("bigNav").querySelector("[data-d='1']").disabled = bigMonth >= mLast;
+  o.months.innerHTML = months.map(mm => { const v = mSum(mm, viewsOf); // месяц без данных — бледный
+    return "<button type='button' class='mtab" + (v == null ? " empty" : "") + "' data-m='" + mm + "' aria-pressed='" + (mm === bigMonth) + "'><b>" + MONTHS_N[+mm.slice(5) - 1] + "</b>" +
+      (o.caption ? "<span>" + (v == null ? "нет данных" : fmt(v) + " " + plural(v, "просмотр", "просмотра", "просмотров")) + "</span>" : "") + "</button>"; }).join("");
+  const act = o.months.querySelector("[aria-pressed='true']"); if (act) act.scrollIntoView({ block: "nearest", inline: "nearest" });
+  o.nav.querySelector("[data-d='-1']").disabled = bigMonth <= mFirst;
+  o.nav.querySelector("[data-d='1']").disabled = bigMonth >= mLast;
   // нарастающий итог — с начала учёта, чтобы линии продолжались из месяца в месяц
   let cs = 0, cv = 0; for (const k of X.keys) if (k < mStart) { cs += stuOf(k) || 0; cv += viewsOf(k); }
   const pts = dates.map(k => { if (k > X.latest || k < X.first || (!X.days[k] && k < LIVE_START)) return { k, none: true };
@@ -800,7 +806,7 @@ function renderBig() {
     return { k, s, v, r, cs: s != null ? cs : null, cv }; });
   const live = pts.filter(p => !p.none);
   const fitW = Math.max(0, el.clientWidth - 48 - 8), step = Math.max(30, Math.min(44, Math.floor(fitW / dates.length)));
-  const bw = Math.max(4, Math.min(9, Math.floor((step - 12) / 3))), W = dates.length * step + 8;
+  const nSer = (S ? 1 : 0) + 1 + (o.rep ? 1 : 0), bw = Math.max(4, Math.min(nSer === 3 ? 9 : 12, Math.floor((step - 4 * nSer) / nSer))), W = dates.length * step + 8;
   const H1 = 170, GAP = 36, H2 = 170, LBL = 46, T1 = 24, B1 = T1 + H1, T2 = B1 + GAP, B2 = T2 + H2, H = B2 + LBL;
   const lv = live.flatMap(p => [p.cv, p.cs]).filter(v => v != null), lo0 = lv.length ? Math.min(...lv) : 0, hi0 = lv.length ? Math.max(...lv, 1) : 1;
   const s1 = (() => { const r = (hi0 - lo0) * 1.1 / 4 || 1, e = Math.pow(10, Math.floor(Math.log10(r))), st = [1, 2, 2.5, 5, 10].map(f => f * e).find(v => v >= r), mn = Math.floor(lo0 / st) * st;
@@ -812,7 +818,7 @@ function renderBig() {
   for (let v = 0; v <= s2.max + 1e-9; v += s2.step) a += "<text x='42' y='" + (y2(v) + 4) + "' text-anchor='end'>" + fmt(Math.round(v)) + "</text>";
   a += "</svg>";
   let s = "<svg width='" + W + "' height='" + H + "' role='img' aria-label='Ученики и просмотры по дням'><defs>" +
-    ["stu", "v1", "v2"].map(c => "<pattern id='bigH_" + c + "' width='4' height='4' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><rect width='2' height='4' fill='var(--" + c + ")'/></pattern>").join("") + "</defs>";
+    ["stu", "v1", "v2"].map(c => "<pattern id='" + PID + "H_" + c + "' width='4' height='4' patternUnits='userSpaceOnUse' patternTransform='rotate(45)'><rect width='2' height='4' fill='var(--" + c + ")'/></pattern>").join("") + "</defs>";
   HOLIDAYS.forEach(h => { const i0 = dates.findIndex(k => k >= h.from); let i1 = -1; dates.forEach((k, i) => { if (k <= h.to) i1 = i; });
     if (i0 < 0 || i1 < i0) return; s += "<rect x='" + (x(i0) - step / 2) + "' y='" + T1 + "' width='" + (i1 - i0 + 1) * step + "' height='" + (B2 - T1) + "' fill='var(--h" + h.t + ")' opacity='0.5'/>"; });
   s += "<g class='grid'>";
@@ -834,17 +840,17 @@ function renderBig() {
     labs.forEach(l => { s += "<circle cx='" + x(li) + "' cy='" + l.y + "' r='4' fill='" + l.col + "' stroke='var(--surface)' stroke-width='2'/><text x='" + (right ? x(li) - 10 : x(li) + 10) + "' y='" + l.ly + "'" + (right ? " text-anchor='end'" : "") + " style='fill:var(--ink);font-size:12px'><tspan style='font-weight:600'>" + fmt(lastP[l.f]) + "</tspan> " + l.txt + "</text>"; }); }
   // столбики: ученики | просмотры | повторные — узкие, рядом
   pts.forEach((p, i) => { if (p.none) return; const cx = x(i), part = isPartialDay(p.k);
-    const bars = p.s != null ? [[p.s, "stu"], [p.v, "v1"], [p.r, "v2"]] : [[p.v, "v1"]], g = 2, w0 = bars.length * bw + (bars.length - 1) * g;
+    const bars = (p.s != null ? [[p.s, "stu"]] : []).concat([[p.v, "v1"]], o.rep && p.s != null ? [[p.r, "v2"]] : []), g = 2, w0 = bars.length * bw + (bars.length - 1) * g;
     bars.forEach(([v, c], j) => { if (!v) return; const t = y2(v), bx = cx - w0 / 2 + j * (bw + g);
-      s += "<rect x='" + bx + "' y='" + t + "' width='" + bw + "' height='" + (B2 - t) + "' rx='2' fill='" + (part ? "url(#bigH_" + c + ")" : "var(--" + c + ")") + "'/>"; }); });
+      s += "<rect x='" + bx + "' y='" + t + "' width='" + bw + "' height='" + (B2 - t) + "' rx='2' fill='" + (part ? "url(#" + PID + "H_" + c + ")" : "var(--" + c + ")") + "'/>"; }); });
   s += "<line x1='0' x2='" + W + "' y1='" + B1 + "' y2='" + B1 + "' style='stroke:var(--faint)'/><line x1='0' x2='" + W + "' y1='" + B2 + "' y2='" + B2 + "' style='stroke:var(--faint)'/>";
   pts.forEach((p, i) => { const dd = pDate(p.k).getUTCDate(), today = p.k === X.latest;
     s += "<text x='" + x(i) + "' y='" + (B2 + 14) + "' text-anchor='middle' style='fill:" + (today ? "var(--accent)" : "var(--ink)") + ";font-weight:" + (today ? 600 : 400) + "'>" + dd + "</text>";
     s += "<text x='" + x(i) + "' y='" + (B2 + 28) + "' text-anchor='middle' style='fill:" + (isOff(p.k) ? "var(--bad)" : "var(--muted)") + "'>" + WD_SHORT[dow(p.k)].toLowerCase() + "</text>"; });
   pts.forEach((p, i) => { s += "<rect class='hit' data-i='" + i + "' x='" + (x(i) - step / 2) + "' y='0' width='" + step + "' height='" + B2 + "' fill='transparent'/>"; });
   s += "</svg><div class='otip' hidden></div>";
-  el.innerHTML = "<div class='axis'>" + a + "</div><div class='plot' id='bigPlot'>" + s + "</div>";
-  const plot = $("bigPlot"), tip = plot.querySelector(".otip");
+  el.innerHTML = "<div class='axis'>" + a + "</div><div class='plot' id='" + PID + "'>" + s + "</div>";
+  const plot = $(PID), tip = plot.querySelector(".otip");
   const row = (c, l, v) => "<div class='row'><span>" + (c ? "<i style='background:var(--" + c + ")'></i>" : "") + l + "</span><span>" + v + "</span></div>";
   plot.querySelectorAll(".hit").forEach(r => {
     const show = () => { const p = pts[+r.dataset.i], hs = holidaysOn(p.k);
@@ -853,16 +859,21 @@ function renderBig() {
           (p.s != null ? row("stu", "новые ученики", fmt(p.s)) : "") + row("v1", "просмотры", fmt(p.v)) + (p.r != null ? row("v2", "повторные просмотры", fmt(p.r)) : "") +
           "<div style='border-top:1px solid rgba(127,127,127,.4);margin:4px 0'></div>" + (p.cs != null ? row("", "всего учеников", fmt(p.cs)) : "") + row("", "всего просмотров", fmt(p.cv))) +
         hs.map(h => "<br>" + h.name).join("");
-      tip.hidden = false; const tx = Math.max(tip.offsetWidth / 2 + 4, Math.min(plot.scrollWidth - tip.offsetWidth / 2 - 4, x(+r.dataset.i)));
+      tip.hidden = false; const hw = tip.offsetWidth / 2 + 4, tx = Math.max(plot.scrollLeft + hw, Math.min(plot.scrollLeft + plot.clientWidth - hw, x(+r.dataset.i))); // в пределах видимой части графика
       tip.style.left = (tx - tip.offsetWidth / 2) + "px"; tip.style.top = (T1 + 6) + "px"; };
     r.addEventListener("mouseenter", show); r.addEventListener("click", show);
     r.addEventListener("mouseleave", () => { tip.hidden = true; }); });
   plot.scrollLeft = li >= 0 ? Math.max(0, x(li) - plot.clientWidth * 0.75) : 0;
-  $("bigLegend").innerHTML = (S ? "<span><i style='background:var(--stu)'></i>ученики</span>" : "") + "<span><i style='background:var(--v1)'></i>просмотры</span>" + (S ? "<span><i style='background:var(--v2)'></i>повторные просмотры</span>" : "") +
+  if (o.legend) o.legend.innerHTML = (S ? "<span><i style='background:var(--stu)'></i>ученики</span>" : "") + "<span><i style='background:var(--v1)'></i>просмотры</span>" + (S && o.rep ? "<span><i style='background:var(--v2)'></i>повторные просмотры</span>" : "") +
     "<span><i class='hatch'></i>день ещё идёт</span><span><i style='background:var(--hq);box-shadow:inset 0 0 0 1px var(--hq-bar)'></i>четвертные каникулы</span><span><i style='background:var(--hm);box-shadow:inset 0 0 0 1px var(--hm-bar)'></i>модульные каникулы</span>";
-  $("bigInfo").innerHTML = "<p>Ученик — user_id «Моей школы» с указанным регионом, появляется в день первого входа (created_at). Просмотр — пара «ученик — урок»: время — начало практики (timeStart), а если его нет — вход (created_at); повторное открытие того же урока не видно. Повторный просмотр — второй, третий и следующие уроки одного ученика. Учителя не учитываются.</p>" +
+  if (o.info) o.info.innerHTML = "<p>Ученик — user_id «Моей школы» с указанным регионом, появляется в день первого входа (created_at). Просмотр — пара «ученик — урок»: время — начало практики (timeStart), а если его нет — вход (created_at); повторное открытие того же урока не видно. Повторный просмотр — второй, третий и следующие уроки одного ученика. Учителя не учитываются.</p>" +
     "<p>Ученики и повторные просмотры — с " + longDate(LIVE_START) + "." + (F ? " Сентябрь — по отчёту «Моей школы»: там только просмотры (пары «ученик — урок» по дате первого просмотра). Дни с " + longDate(addDays(F.to, 1)) + " по " + longDate(addDays(LIVE_START, -1)) + " не показаны: данных за них нет." : "") + "</p>" +
     "<p>Даты каникул 2026/27: по четвертям — рекомендации Минпросвещения, по модульной системе 5+1 — типовой график. В регионах и школах даты могут отличаться.</p>";
+  return bigMonth;
+}
+function renderBig() {
+  bigMonth = duoChart({ el: $("big"), months: $("bigMonths"), nav: $("bigNav"), plotId: "bigPlot", month: bigMonth,
+    views: viewsOf, stu: stuOf, rep: repOf, legend: $("bigLegend"), info: $("bigInfo") });
 }
 
 $("bigNav").addEventListener("click", e => { if (!X) return;
@@ -931,7 +942,10 @@ function regionStats() {
   if (X.hasS) for (const k of X.keys) { const u = J.u1[k]; if (!u) continue; const inW = k >= X.w7From && k <= X.w7To, inP = k >= X.p7From && k <= X.p7To;
     for (const si in u) { const rn = X.regOfSchool[si] || "Регион не указан"; add(stu, rn, u[si]); add(sstu, si, u[si]);
       if (inW) { add(stuW, rn, u[si]); add(sstuW, si, u[si]); } if (inP) { add(stuP, rn, u[si]); add(sstuP, si, u[si]); } } }
-  return (RG = { X, day, course, lesson, school, sday, scourse, stu, sstu, stuW, stuP, sstuW, sstuP });
+  const stuDay = {}, sstuDay = {}; // новые ученики по дням: регион → день, школа → день
+  if (X.hasS) for (const k of X.keys) { const u = J.u1[k]; if (!u) continue;
+    for (const si in u) { const rn = X.regOfSchool[si] || "Регион не указан"; add(stuDay[rn] || (stuDay[rn] = {}), k, u[si]); add(sstuDay[si] || (sstuDay[si] = {}), k, u[si]); } }
+  return (RG = { X, day, course, lesson, school, sday, scourse, stu, sstu, stuW, stuP, sstuW, sstuP, stuDay, sstuDay });
 }
 function regionRows() {
   const G = regionStats(), names = [...new Set(SUBJECT_CODES.map(c => REGIONS[c]))];
@@ -991,7 +1005,8 @@ function renderRegionModal() {
   const rows = regionRows().sort((a, b) => b.total - a.total), place = rows.findIndex(r => r.name === n) + 1, total = X.E.region[n] || 0;
   $("rmTitle").textContent = n;
   $("rmCap").textContent = total ? place + "-е место из 89 по числу просмотров учеников · " + pct1(total, X.keys.reduce((t, k) => t + (X.days[k].views || 0), 0)) + " всех просмотров" : "Просмотров учеников пока нет";
-  rmMonth = comboChart({ el: $("rmBig"), months: $("rmMonths"), nav: $("rmNav"), plotId: "rmPlot", month: rmMonth, val });
+  const rsd = G.stuDay[n] || {};
+  rmMonth = duoChart({ el: $("rmBig"), months: $("rmMonths"), nav: $("rmNav"), plotId: "rmPlot", month: rmMonth, views: val, stu: k => J.u1 && J.u1[k] ? rsd[k] || 0 : null, legend: $("rmLegend"), caption: true });
   // показатели
   const mSum = (mm, to) => { let t = 0; for (const k of X.keys) if (k.slice(0, 7) === mm && (!to || +k.slice(8) <= to)) t += val(k); return t; };
   const cur = X.latest.slice(0, 7), mi = +rmMonth.slice(5) - 1, prev = (d => (d.setUTCMonth(d.getUTCMonth() - 1), d.toISOString().slice(0, 7)))(pDate(rmMonth + "-01")), pi = +prev.slice(5) - 1;
@@ -1032,14 +1047,15 @@ function renderRegionModal() {
     d.innerHTML = "<td colspan='" + (cols.length + 1) + "'><div class='sc-box'>" +
       "<div class='sc-head'><b>" + esc(X.schools[st.sel][0]) + "</b><span>" + (X.hasS ? "учеников " + fmt(G.sstu[st.sel] || 0) + " · просмотров " : "просмотров ") + fmt(x.total) + " · " + wk(srows.find(r => r.id === st.sel), X.hasP7) + " просмотров к пред. 7 дням · первый просмотр " + shortDate(x.first) + ", последний " + shortDate(x.last) + "</span><button type='button' class='xlbtn sm' id='scXl'>Скачать школу в Excel</button></div>" +
       "<div class='mbar' id='scNav' role='group' aria-label='Месяц на графике школы'><button type='button' class='mbtn' data-d='-1' aria-label='Предыдущий месяц'>‹</button><div class='mtabs' id='scMonths'></div><button type='button' class='mbtn' data-d='1' aria-label='Следующий месяц'>›</button></div>" +
-      "<div class='big' id='scBig'></div>" +
+      "<div class='big' id='scBig'></div><div class='legend' id='scLegend'></div>" +
       "<h3 class='sc-sub with-info'>Просмотры по часам · в среднем за день <span class='info' tabindex='0' role='button' aria-label='Пояснение'>i<span class='info-pop' role='tooltip' id='scHoursInfo'></span></span></h3><div class='chart' id='scHours'></div>" +
       "<h3 class='sc-sub'>Самые просматриваемые курсы</h3><ol class='rank' id='scCourses'></ol></div></td>";
     tr.after(d);
     // на узком экране таблица прокручивается вбок — блок подробностей держим в видимой ширине
     const box = d.querySelector(".sc-box"); box.style.width = Math.max(260, $("rmSchools").clientWidth - 28) + "px";
     const sv = G.sday[st.sel] || {};
-    scMonth = comboChart({ el: $("scBig"), months: $("scMonths"), nav: $("scNav"), plotId: "scPlot", month: scMonth, val: k => sv[k] || 0 });
+    const ssd = G.sstuDay[st.sel] || {};
+    scMonth = duoChart({ el: $("scBig"), months: $("scMonths"), nav: $("scNav"), plotId: "scPlot", month: scMonth, views: k => sv[k] || 0, stu: k => J.u1 && J.u1[k] ? ssd[k] || 0 : null, legend: $("scLegend"), caption: true });
     hoursBlock("sh", st.sel, $("scHours"), $("scHoursInfo"));
     const sel = st.sel; $("scXl").onclick = e => { e.stopPropagation(); exportSchool(n, sel); };
     const scs = G.scourse[st.sel] || {};
@@ -1207,7 +1223,9 @@ function courseStats() { // курс → {день: просмотры}, шко�
   const stu = {}, stuW = {}, stuP = {}; // ученики курса — разные ученики, открывшие хотя бы один урок курса (с начала учёта учеников)
   if (X.hasS) for (const k of X.keys) { const m = J.us[k]; if (!m) continue; const inW = k >= X.w7From && k <= X.w7To, inP = k >= X.p7From && k <= X.p7To;
     for (const x in m) { const c = x.slice(0, x.indexOf("|")); add(stu, c, m[x]); if (inW) add(stuW, c, m[x]); if (inP) add(stuP, c, m[x]); } }
-  return (CG = { X, day, sch, reg, stu, stuW, stuP });
+  const stuDay = {}; // ученики, впервые открывшие урок курса, по дням
+  if (X.hasS) for (const k of X.keys) { const m = J.us[k]; if (m) for (const x in m) { const c = x.slice(0, x.indexOf("|")); add(stuDay[c] || (stuDay[c] = {}), k, m[x]); } }
+  return (CG = { X, day, sch, reg, stu, stuW, stuP, stuDay });
 }
 let cmId = null, cmMonth = null;
 function openCourse(c) { cmId = c; cmMonth = null; $("crsModal").hidden = false; document.body.classList.add("modal-open"); renderCourseModal(); $("crsModal").scrollTop = 0; $("cmClose").focus(); }
@@ -1225,7 +1243,8 @@ function renderCourseModal() {
   const all = Object.keys(X.E.course).filter(x => x !== "?").sort((a, b) => X.E.course[b] - X.E.course[a]), place = all.indexOf(c) + 1;
   $("cmTitle").textContent = courseName(c);
   $("cmCap").textContent = total ? place + "-е место из " + all.length + " по числу просмотров учеников · " + pct1(total, sumVals(X.E.course)) + " всех просмотров" : "Просмотров учеников пока нет";
-  cmMonth = comboChart({ el: $("cmBig"), months: $("cmMonths"), nav: $("cmNav"), plotId: "cmPlot", month: cmMonth, val });
+  const csd = G.stuDay[c] || {};
+  cmMonth = duoChart({ el: $("cmBig"), months: $("cmMonths"), nav: $("cmNav"), plotId: "cmPlot", month: cmMonth, views: val, stu: k => J.us && J.us[k] ? csd[k] || 0 : null, legend: $("cmLegend"), caption: true });
   // показатели
   const mSum = (mm, to) => { let t = 0; for (const k of X.keys) if (k.slice(0, 7) === mm && (!to || +k.slice(8) <= to)) t += val(k); return t; };
   const cur = X.latest.slice(0, 7), mi = +cmMonth.slice(5) - 1, prev = (d => (d.setUTCMonth(d.getUTCMonth() - 1), d.toISOString().slice(0, 7)))(pDate(cmMonth + "-01")), pi = +prev.slice(5) - 1;
